@@ -1,0 +1,142 @@
+services:
+  openclaw:
+    image: ${AIMS_OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    pull_policy: never
+    container_name: aims-openclaw
+    restart: always
+    ports:
+      - "127.0.0.1:${AIMS_GATEWAY_PORT:-18789}:18789"
+    volumes:
+      - ${AIMS_OPENCLAW_CONFIG_PATH:-./openclaw.json}:/root/.openclaw/openclaw.json
+      - ./SOUL.md:/root/.openclaw/SOUL.md
+      - ./AGENTS.md:/root/.openclaw/AGENTS.md
+      - ./workspace:/root/.openclaw/workspace
+      - ./workspace-main:/root/.openclaw/workspace-main
+      - ./workspace-ecommerce:/root/.openclaw/workspace-ecommerce
+      - ./workspace-social:/root/.openclaw/workspace-social
+      - ./workspace-cs:/root/.openclaw/workspace-cs
+      - ./workspace-office:/root/.openclaw/workspace-office
+      - ./skills:/root/.openclaw/skills
+      - ./mcporter.json:/root/.openclaw/mcporter.json
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-}
+      LLM_VLLM_ENDPOINT: ${LLM_VLLM_ENDPOINT:-}
+      LLM_TRITON_ENDPOINT: ${LLM_TRITON_ENDPOINT:-}
+      LLM_OLLAMA_ENDPOINT: ${AIMS_DOCKER_OLLAMA_ENDPOINT:-}
+      LLM_MULTIMODAL_MODEL: ${LLM_MULTIMODAL_MODEL:-}
+      LLM_RERANK_MODEL: ${LLM_RERANK_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      AIMS_GATEWAY_TOKEN: ${AIMS_GATEWAY_TOKEN}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus:
+        condition: service_started
+      qdrant:
+        condition: service_started
+
+  mysql:
+    image: mysql:8.0
+    pull_policy: never
+    container_name: aims-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-aims}
+      MYSQL_USER: ${MYSQL_USER:-aims}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "127.0.0.1:${AIMS_MYSQL_HOST_PORT:-23306}:3306"
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password"]
+    volumes:
+      - ${AIMS_MYSQL_DATA_DIR:-D:/Project/aims/mysql-data}:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    pull_policy: never
+    container_name: aims-redis
+    restart: always
+    ports:
+      - "127.0.0.1:${AIMS_REDIS_HOST_PORT:-26379}:6379"
+    volumes:
+      - ${AIMS_REDIS_DATA_DIR:-D:/Project/aims/redis-data}:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    pull_policy: never
+    container_name: aims-etcd
+    restart: always
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: 1000
+      ETCD_QUOTA_BACKEND_BYTES: 4294967296
+      ETCD_SNAPSHOT_COUNT: 50000
+    command: >-
+      /usr/local/bin/etcd
+      --advertise-client-urls=http://127.0.0.1:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - ${AIMS_MILVUS_DATA_DIR:-D:/Project/aims/milvus-data}/etcd:/etcd
+
+  minio:
+    image: minio/minio:latest
+    pull_policy: never
+    container_name: aims-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:${AIMS_MINIO_API_PORT:-19000}:9000"
+      - "127.0.0.1:${AIMS_MINIO_CONSOLE_PORT:-19001}:9001"
+    volumes:
+      - ${AIMS_MINIO_DATA_DIR:-D:/Project/aims/minio-data}:/data
+
+  milvus:
+    image: milvusdb/milvus:v2.4.6
+    pull_policy: never
+    container_name: aims-milvus
+    restart: always
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+    ports:
+      - "127.0.0.1:${AIMS_MILVUS_GRPC_PORT:-19530}:19530"
+      - "127.0.0.1:${AIMS_MILVUS_HEALTH_PORT:-19091}:9091"
+    volumes:
+      - ${AIMS_MILVUS_DATA_DIR:-D:/Project/aims/milvus-data}/milvus:/var/lib/milvus
+    depends_on:
+      - etcd
+      - minio
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    pull_policy: never
+    container_name: aims-qdrant
+    restart: always
+    ports:
+      - "127.0.0.1:${AIMS_QDRANT_HTTP_PORT:-16333}:6333"
+      - "127.0.0.1:${AIMS_QDRANT_GRPC_PORT:-16334}:6334"
+    volumes:
+      - ${AIMS_QDRANT_DATA_DIR:-D:/Project/aims/qdrant-data}:/qdrant/storage

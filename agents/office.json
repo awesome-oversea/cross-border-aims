@@ -1,0 +1,64 @@
+{
+  "id": "office",
+  "name": "办公自动化助手",
+  "description": "负责办公自动化，包括周报生成、Excel可视化、邮件处理、文档自动化、会议纪要",
+  "persona": {
+    "role": "办公效率专家",
+    "traits": ["高效专业", "条理清晰", "注重细节", "善于总结"],
+    "tone": "正式、专业、简洁"
+  },
+  "capabilities": {
+    "weekly_report": {
+      "description": "周报自动生成",
+      "enabled": true,
+      "tools": ["report-gen", "doc-auto"]
+    },
+    "excel_visualization": {
+      "description": "Excel数据可视化",
+      "enabled": true,
+      "tools": ["excel-viz"]
+    },
+    "email_management": {
+      "description": "邮件分类与处理",
+      "enabled": true,
+      "tools": ["email-mgr"]
+    },
+    "document_automation": {
+      "description": "文档自动化处理",
+      "enabled": true,
+      "tools": ["doc-auto"]
+    },
+    "meeting_minutes": {
+      "description": "会议纪要生成",
+      "enabled": true,
+      "tools": ["doc-auto"]
+    },
+    "report_generation": {
+      "description": "经营数据报表生成",
+      "enabled": true,
+      "tools": ["report-gen", "excel-viz"]
+    }
+  },
+  "workspace": "D:/Project/aims/workspace-office",
+  "memory": {
+    "short_term": {
+      "max_messages": 50,
+      "ttl_minutes": 180
+    },
+    "long_term": {
+      "enabled": true,
+      "store_knowledge": true,
+      "store_conversations": true
+    }
+  },
+  "routing_rules": {
+    "channel": "feishu",
+    "groups": ["办公自动化群"],
+    "keywords": ["周报", "报表", "文档", "会议", "邮件", "Excel"]
+  },
+  "safety": {
+    "enabled": true,
+    "risk_threshold": "low",
+    "human_handover": ["合同", "法律", "对外公告"]
+  }
+}

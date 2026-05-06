@@ -1,0 +1,56 @@
+services:
+  ollama:
+    image: ${AIMS_OLLAMA_IMAGE:-ollama/ollama:latest}
+    pull_policy: never
+    container_name: aims-ollama-local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${AIMS_OLLAMA_HOST_PORT:-11434}:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 24h
+    volumes:
+      - ${AIMS_OLLAMA_DATA_DIR:-D:/aitools/aims/ollama}:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  ollama-model-init:
+    image: ${AIMS_OLLAMA_IMAGE:-ollama/ollama:latest}
+    pull_policy: never
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      AIMS_LOCAL_MODEL_PULL_LIST: ${AIMS_LOCAL_MODEL_PULL_LIST:-qwen2.5:1.5b-instruct}
+      AIMS_LOCAL_OPTIONAL_MODEL_PULL_LIST: ${AIMS_LOCAL_OPTIONAL_MODEL_PULL_LIST:-qwen3.5:2b-q8_0}
+    entrypoint: ["/bin/sh", "/opt/aims-local-llm/pull-ollama-models.sh"]
+    volumes:
+      - ./docker/local-llm/pull-ollama-models.sh:/opt/aims-local-llm/pull-ollama-models.sh:ro
+    restart: "no"
+
+  cpu-model-cache-init:
+    image: ${AIMS_PYTHON_IMAGE:-python:3.11-slim}
+    pull_policy: never
+    working_dir: /app
+    entrypoint: ["/bin/sh", "-lc"]
+    command:
+      - >-
+        python -m pip install --cache-dir /pip-cache huggingface_hub==0.31.1 &&
+        python /app/scripts/p0/bootstrap_local_model_assets.py
+    environment:
+      PIP_CACHE_DIR: /pip-cache
+      HF_HOME: /cache/huggingface
+      TRANSFORMERS_CACHE: /cache/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /cache/sentence-transformers
+      WHISPER_CACHE_DIR: /cache/whisper
+      AIMS_LOCAL_RERANK_REPO: ${AIMS_LOCAL_RERANK_REPO:-BAAI/bge-reranker-base}
+      AIMS_LOCAL_WHISPER_REPO: ${AIMS_LOCAL_WHISPER_REPO:-openai/whisper-tiny}
+    volumes:
+      - ./:/app
+      - ${AIMS_LOCAL_MODEL_CACHE_DIR:-D:/aitools/aims/model-cache}:/cache
+      - ${AIMS_PIP_CACHE_DIR:-D:/aitools/pip-cache}:/pip-cache
+    restart: "no"

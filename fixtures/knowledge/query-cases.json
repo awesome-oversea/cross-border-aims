@@ -1,0 +1,42 @@
+{
+  "project": "AIMS",
+  "version": 1,
+  "cases": [
+    {
+      "id": "case-ecom-rules-amazon-title",
+      "collection": "ecom_rules",
+      "query": "Amazon 露营灯 Listing 标题有哪些合规要求",
+      "expectedKeywords": ["Amazon", "Listing", "合规", "标题"]
+    },
+    {
+      "id": "case-products-camping-lantern",
+      "collection": "products",
+      "query": "10000mAh IPX5 露营灯适合什么卖点表达",
+      "expectedKeywords": ["10000mAh", "IPX5", "露营", "卖点"]
+    },
+    {
+      "id": "case-after-sales-damaged-glass",
+      "collection": "after_sales",
+      "query": "玻璃冷泡壶收到后破损应该怎么处理",
+      "expectedKeywords": ["破损", "退款", "补发", "订单"]
+    },
+    {
+      "id": "case-social-rules-xhs",
+      "collection": "social_rules",
+      "query": "小红书种草笔记有哪些禁忌词和结构要求",
+      "expectedKeywords": ["小红书", "种草", "禁忌词", "结构"]
+    },
+    {
+      "id": "case-scripts-presale",
+      "collection": "scripts",
+      "query": "售前咨询便携榨汁杯时怎么组织推荐话术",
+      "expectedKeywords": ["售前", "推荐", "话术", "场景"]
+    },
+    {
+      "id": "case-industry-funnel",
+      "collection": "industry",
+      "query": "营销活动策划和漏斗指标应该怎么拆解",
+      "expectedKeywords": ["活动", "漏斗", "指标", "复盘"]
+    }
+  ]
+}

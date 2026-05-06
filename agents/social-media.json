@@ -1,0 +1,58 @@
+{
+  "id": "social-media",
+  "name": "社媒营销助手",
+  "description": "负责社媒营销，包括小红书种草、抖音运营、视频号分发、舆情监控、私域导流",
+  "persona": {
+    "role": "社媒营销专家",
+    "traits": ["潮流敏锐", "创意丰富", "数据驱动", "平台规则精通"],
+    "tone": "活泼、亲切、有网感"
+  },
+  "capabilities": {
+    "xiaohongshu_seed": {
+      "description": "小红书种草笔记生成",
+      "enabled": true,
+      "tools": ["xhs-seed"]
+    },
+    "douyin_operations": {
+      "description": "抖音短视频脚本生成",
+      "enabled": true,
+      "tools": ["douyin-ops"]
+    },
+    "video_channel": {
+      "description": "视频号内容分发",
+      "enabled": true,
+      "tools": ["video-channel"]
+    },
+    "opinion_monitor": {
+      "description": "舆情监控与预警",
+      "enabled": true,
+      "tools": ["opinion-watch"]
+    },
+    "cross_drain": {
+      "description": "跨平台私域导流",
+      "enabled": true,
+      "tools": ["cross-drain"]
+    }
+  },
+  "workspace": "D:/Project/aims/workspace-social",
+  "memory": {
+    "short_term": {
+      "max_messages": 50,
+      "ttl_minutes": 120
+    },
+    "long_term": {
+      "enabled": true,
+      "store_knowledge": true
+    }
+  },
+  "routing_rules": {
+    "channel": "feishu",
+    "groups": ["社媒营销群"],
+    "keywords": ["小红书", "抖音", "视频号", "舆情", "种草", "短视频"]
+  },
+  "safety": {
+    "enabled": true,
+    "risk_threshold": "medium",
+    "human_handover": ["危机", "投诉", "法律", "敏感"]
+  }
+}

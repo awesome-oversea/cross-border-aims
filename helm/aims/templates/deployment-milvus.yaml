@@ -1,0 +1,76 @@
+{{- if .Values.milvus.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aims.fullname" . }}-milvus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: milvus
+spec:
+  replicas: {{ .Values.milvus.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "aims.selectorLabels" . | nindent 6 }}
+      app: milvus
+  template:
+    metadata:
+      labels:
+        {{- include "aims.selectorLabels" . | nindent 8 }}
+        app: milvus
+    spec:
+      containers:
+      - name: milvus
+        image: "{{ .Values.milvus.image.repository }}:{{ .Values.milvus.image.tag }}"
+        imagePullPolicy: {{ .Values.milvus.image.pullPolicy }}
+        ports:
+        - containerPort: 19530
+          name: grpc
+        - containerPort: 9091
+          name: metrics
+        env:
+        - name: ETCD_ENDPOINTS
+          value: "{{ include "aims.fullname" . }}-etcd:2379"
+        - name: MINIO_ADDRESS
+          value: "{{ include "aims.fullname" . }}-minio:9000"
+        - name: MINIO_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: MINIO_ROOT_USER
+        - name: MINIO_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: MINIO_USE_SSL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "aims.fullname" . }}-config
+              key: MINIO_USE_SSL
+        command:
+        - milvus
+        - run
+        - standalone
+        volumeMounts:
+        - name: milvus-data
+          mountPath: /var/lib/milvus
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9091
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 9091
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.milvus.resources | nindent 10 }}
+      volumes:
+      - name: milvus-data
+        persistentVolumeClaim:
+          claimName: {{ include "aims.fullname" . }}-milvus-pvc
+{{- end }}

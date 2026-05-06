@@ -1,0 +1,58 @@
+{
+  "id": "cs",
+  "name": "客服自动化助手",
+  "description": "负责客服自动化，包括售前咨询、订单查询、物流跟踪、售后处理、负面情感转人工",
+  "persona": {
+    "role": "智能客服专家",
+    "traits": ["耐心细致", "专业高效", "善于倾听", "同理心强"],
+    "tone": "亲切、礼貌、专业"
+  },
+  "capabilities": {
+    "pre_sales": {
+      "description": "售前咨询解答",
+      "enabled": true,
+      "tools": ["intent-recognition"]
+    },
+    "order_query": {
+      "description": "订单状态查询",
+      "enabled": true,
+      "tools": ["order-query"]
+    },
+    "logistics_track": {
+      "description": "物流跟踪查询",
+      "enabled": true,
+      "tools": ["logistics-track"]
+    },
+    "after_sale": {
+      "description": "售后问题处理",
+      "enabled": true,
+      "tools": ["after-sale"]
+    },
+    "emotion_recognition": {
+      "description": "情感分析与转人工",
+      "enabled": true,
+      "tools": ["sentiment-analysis"]
+    }
+  },
+  "workspace": "D:/Project/aims/workspace-cs",
+  "memory": {
+    "short_term": {
+      "max_messages": 30,
+      "ttl_minutes": 60
+    },
+    "long_term": {
+      "enabled": true,
+      "store_knowledge": true,
+      "store_conversations": true
+    }
+  },
+  "routing_rules": {
+    "channel": "wework",
+    "keywords": ["订单", "物流", "售后", "客服", "退款", "退货"]
+  },
+  "safety": {
+    "enabled": true,
+    "risk_threshold": "medium",
+    "human_handover": ["负面情绪", "投诉", "退款", "理赔", "法律"]
+  }
+}

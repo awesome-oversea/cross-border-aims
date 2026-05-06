@@ -1,0 +1,564 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  namespace: aims
+  labels:
+    app: openclaw
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: openclaw
+  template:
+    metadata:
+      labels:
+        app: openclaw
+    spec:
+      containers:
+      - name: openclaw
+        image: ghcr.io/openclaw/openclaw:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 18789
+          name: gateway
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: OPENAI_API_KEY
+        - name: DEEPSEEK_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: DEEPSEEK_API_KEY
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: GEMINI_API_KEY
+        - name: MOONSHOT_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MOONSHOT_API_KEY
+        - name: ZHIPU_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: ZHIPU_API_KEY
+        - name: LLM_PRIMARY_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: LLM_PRIMARY_MODEL
+        - name: LLM_MULTIMODAL_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: LLM_MULTIMODAL_MODEL
+        - name: LLM_RERANK_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: LLM_RERANK_MODEL
+        - name: AIMS_GATEWAY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: AIMS_GATEWAY_TOKEN
+        - name: MYSQL_HOST
+          value: "mysql"
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MYSQL_PASSWORD
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: MILVUS_HOST
+          value: "milvus"
+        - name: MILVUS_PORT
+          value: "19530"
+        - name: QDRANT_HOST
+          value: "qdrant"
+        - name: QDRANT_PORT
+          value: "6333"
+        volumeMounts:
+        - name: config
+          mountPath: /root/.openclaw/openclaw.json
+          subPath: openclaw.json
+        - name: config
+          mountPath: /root/.openclaw/SOUL.md
+          subPath: SOUL.md
+        - name: config
+          mountPath: /root/.openclaw/AGENTS.md
+          subPath: AGENTS.md
+        - name: config
+          mountPath: /root/.openclaw/mcporter.json
+          subPath: mcporter.json
+        - name: workspace
+          mountPath: /root/.openclaw/workspace
+        - name: workspace-main
+          mountPath: /root/.openclaw/workspace-main
+        - name: workspace-ecommerce
+          mountPath: /root/.openclaw/workspace-ecommerce
+        - name: workspace-social
+          mountPath: /root/.openclaw/workspace-social
+        - name: workspace-cs
+          mountPath: /root/.openclaw/workspace-cs
+        - name: workspace-office
+          mountPath: /root/.openclaw/workspace-office
+        - name: skills
+          mountPath: /root/.openclaw/skills
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 18789
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 18789
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+      volumes:
+      - name: config
+        configMap:
+          name: openclaw-config
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: openclaw-workspace-pvc
+      - name: workspace-main
+        emptyDir: {}
+      - name: workspace-ecommerce
+        emptyDir: {}
+      - name: workspace-social
+        emptyDir: {}
+      - name: workspace-cs
+        emptyDir: {}
+      - name: workspace-office
+        emptyDir: {}
+      - name: skills
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: aims
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MYSQL_PASSWORD
+        args:
+        - --default-authentication-plugin=mysql_native_password
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: init-sql
+          mountPath: /docker-entrypoint-initdb.d
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - 127.0.0.1
+            - -p$(MYSQL_ROOT_PASSWORD)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - 127.0.0.1
+            - -p$(MYSQL_ROOT_PASSWORD)
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+      - name: init-sql
+        configMap:
+          name: mysql-init-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: aims
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: redis
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: etcd
+  namespace: aims
+  labels:
+    app: etcd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: etcd
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      containers:
+      - name: etcd
+        image: quay.io/coreos/etcd:v3.5.5
+        ports:
+        - containerPort: 2379
+          name: client
+        env:
+        - name: ETCD_AUTO_COMPACTION_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: ETCD_AUTO_COMPACTION_MODE
+        - name: ETCD_AUTO_COMPACTION_RETENTION
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: ETCD_AUTO_COMPACTION_RETENTION
+        - name: ETCD_QUOTA_BACKEND_BYTES
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: ETCD_QUOTA_BACKEND_BYTES
+        - name: ETCD_SNAPSHOT_COUNT
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: ETCD_SNAPSHOT_COUNT
+        command:
+        - /usr/local/bin/etcd
+        - --advertise-client-urls=http://127.0.0.1:2379
+        - --listen-client-urls=http://0.0.0.0:2379
+        - --data-dir=/etcd
+        volumeMounts:
+        - name: etcd-data
+          mountPath: /etcd
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+      volumes:
+      - name: etcd-data
+        persistentVolumeClaim:
+          claimName: etcd-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: aims
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        ports:
+        - containerPort: 9000
+          name: api
+        - containerPort: 9001
+          name: console
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MINIO_ROOT_USER
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MINIO_ROOT_PASSWORD
+        command:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
+        volumeMounts:
+        - name: minio-data
+          mountPath: /data
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: minio-data
+        persistentVolumeClaim:
+          claimName: minio-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: milvus
+  namespace: aims
+  labels:
+    app: milvus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: milvus
+  template:
+    metadata:
+      labels:
+        app: milvus
+    spec:
+      containers:
+      - name: milvus
+        image: milvusdb/milvus:v2.4.6
+        ports:
+        - containerPort: 19530
+          name: grpc
+        - containerPort: 9091
+          name: metrics
+        env:
+        - name: ETCD_ENDPOINTS
+          value: "etcd:2379"
+        - name: MINIO_ADDRESS
+          value: "minio:9000"
+        - name: MINIO_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MINIO_ROOT_USER
+        - name: MINIO_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aims-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: MINIO_USE_SSL
+          valueFrom:
+            configMapKeyRef:
+              name: aims-config
+              key: MINIO_USE_SSL
+        command:
+        - milvus
+        - run
+        - standalone
+        volumeMounts:
+        - name: milvus-data
+          mountPath: /var/lib/milvus
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 9091
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 9091
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+      volumes:
+      - name: milvus-data
+        persistentVolumeClaim:
+          claimName: milvus-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qdrant
+  namespace: aims
+  labels:
+    app: qdrant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      containers:
+      - name: qdrant
+        image: qdrant/qdrant:latest
+        ports:
+        - containerPort: 6333
+          name: http
+        - containerPort: 6334
+          name: grpc
+        volumeMounts:
+        - name: qdrant-data
+          mountPath: /qdrant/storage
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 6333
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 6333
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: qdrant-data
+        persistentVolumeClaim:
+          claimName: qdrant-pvc

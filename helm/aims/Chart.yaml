@@ -1,0 +1,15 @@
+apiVersion: v2
+name: aims
+description: AIMS - AI Marketing System based on OpenClaw
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - marketing
+  - openclaw
+  - ecommerce
+  - social-media
+maintainers:
+  - name: AIMS Team
+    email: aims@example.com

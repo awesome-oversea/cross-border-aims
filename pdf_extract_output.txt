@@ -1,0 +1,2150 @@
+
+================================================================================
+FILE: openclaw-01-快速上手指南.pdf
+================================================================================
+--- Page 1/3 ---
+OpenClaw 快速上⼿指南
+5 分钟完成安装和⾸次对话
+⼀、准备⼯作
+必需条件
+Node.js：推荐 Node 24（最低 22.16+）
+API 密钥：Anthropic、OpenAI、Google 等任⼀提供商
+检查 Node 版本
+node --version # 确保显示 v22.16+ 或更⾼
+Windows ⽤户：推荐使⽤ WSL2（更稳定），原⽣ Windows 也⽀持。
+⼆、快速安装
+⽅式⼀：⼀键安装（推荐）
+macOS / Linux：
+curl -fsSL https://openclaw.ai/install.sh | bash
+Windows (PowerShell)：
+iwr -useb https://openclaw.ai/install.ps1 | iex
+💡 说明：⾃动检测系统并安装最新版本。
+⽅式⼆：NPM 安装
+npm install -g openclaw
+💡 说明：适合已熟悉 Node.js 的⽤户。
+⽅式三：Docker
+docker run -it openclaw/openclaw
+三、初始化配置
+运⾏配置向导
+--- Page 2/3 ---
+openclaw onboard --install-daemon
+这个命令会：
+1. 选择 AI 模型提供商
+2. 输⼊ API 密钥
+3. 配置 Gateway（⽹关）
+4. 安装后台服务
+💡 耗时：约 2 分钟完成全部配置。
+四、验证安装
+1. 检查 Gateway 状态
+openclaw gateway status
+正常输出：显示 Gateway 运⾏在 18789 端⼝
+2. 打开控制⾯板
+openclaw dashboard
+正常情况：浏览器⾃动打开 Control UI
+3. 发送第⼀条消息
+在 Control UI 中输⼊任意内容，应收到 AI 回复。
+五、下⼀步
+任务 命令/链接
+连接聊天渠道 Telegram、Discord、WhatsApp
+配置配对和安全 openclaw pairing
+配置 Gateway 编辑 ~/.openclaw/openclaw.json
+浏览⼯具列表 ⼯具⼤全
+六、⾼级选项
+环境变量
+--- Page 3/3 ---
+# ⾃定义主⽬录
+export OPENCLAW_HOME=/custom/path
+# ⾃定义配置⽂件路径
+export OPENCLAW_CONFIG_PATH=/custom/config.json
+# ⾃定义状态⽬录
+export OPENCLAW_STATE_DIR=/custom/state
+⾮交互式安装
+openclaw setup --non-interactive --mode local
+💡 说明：适合⾃动化脚本或 CI/CD 环境。
+🎯 快速参考
+命令 说明
+openclaw onboard --install-daemon 完整初始化（推荐）
+openclaw setup 基本配置
+openclaw gateway status 检查服务状态
+openclaw dashboard 打开控制⾯板
+openclaw update 更新到最新版本
+
+================================================================================
+FILE: openclaw-09-Gateway部署与运维.pdf
+================================================================================
+--- Page 1/5 ---
+OpenClaw Gateway 部署与运维
+⽹关服务的部署、监控和维护
+Gateway 概述
+Gateway 是 OpenClaw 的核⼼服务，负责：
+消息路由
+会话管理
+⼯具调⽤
+定时任务
+基本操作
+启动服务
+# 前台运⾏
+openclaw gateway start
+# 守护进程模式（推荐）
+openclaw gateway start --daemon
+# 查看状态
+openclaw gateway status
+停⽌服务
+openclaw gateway stop
+重启服务
+openclaw gateway restart
+配置
+基本配置
+{
+gateway: {
+port: 18789, // 监听端⼝
+host: "localhost", // 绑定地址
+logLevel: "info" // ⽇志级别
+--- Page 2/5 ---
+}
+}
+⽣产环境配置
+{
+gateway: {
+port: 18789,
+host: "0.0.0.0", // 允许外部访问
+logLevel: "warn",
+maxConnections: 100,
+timeout: 30000
+}
+}
+⽇志管理
+查看⽇志
+# 实时⽇志
+openclaw logs --tail
+# 最近100⾏
+openclaw logs --lines 100
+# Gateway ⽇志
+openclaw gateway logs
+⽇志位置
+~/.openclaw/logs/
+├── gateway.log # Gateway 主⽇志
+├── agent.log # Agent ⽇志
+└── error.log # 错误⽇志
+监控
+健康检查
+# 系统诊断
+openclaw doctor
+# 健康状态
+--- Page 3/5 ---
+openclaw health
+# 详细状态
+openclaw status
+性能指标
+# 会话统计
+openclaw sessions list --stats
+# 资源使⽤
+openclaw status --resources
+备份与恢复
+备份
+# 创建备份
+openclaw backup create
+# 备份到指定位置
+openclaw backup create --path /backup/location
+恢复
+# 列出备份
+openclaw backup list
+# 恢复备份
+openclaw backup restore <backup-id>
+故障排除
+Gateway ⽆法启动
+# 检查端⼝占⽤
+lsof -i :18789
+# 检查配置
+openclaw doctor
+--- Page 4/5 ---
+# 查看⽇志
+tail -f ~/.openclaw/logs/error.log
+连接问题
+# 检查防⽕墙
+sudo ufw status
+# 检查 Gateway 状态
+openclaw gateway status
+Docker 部署
+Docker Compose
+version: '3'
+services:
+openclaw:
+image: openclaw/openclaw:latest
+ports:
+- "18789:18789"
+volumes:
+- ./config:/root/.openclaw
+environment:
+- OPENCLAW_GATEWAY_PORT=18789
+启动
+docker-compose up -d
+系统服务
+macOS (launchd)
+# 安装服务
+openclaw gateway install-service
+# 卸载服务
+openclaw gateway uninstall-service
+Linux (systemd)
+--- Page 5/5 ---
+# 创建服务⽂件
+sudo nano /etc/systemd/system/openclaw.service
+# 启动服务
+sudo systemctl start openclaw
+sudo systemctl enable openclaw
+🎯 快速参考
+常⽤命令
+命令 说明
+openclaw gateway status 查看状态
+openclaw gateway start 启动服务
+openclaw gateway stop 停⽌服务
+openclaw gateway restart 重启服务
+openclaw logs --tail 实时⽇志
+openclaw doctor 系统诊断
+配置⽂件
+⽂件 说明
+~/.openclaw/openclaw.json 主配置
+~/.openclaw/logs/ ⽇志⽬录
+~/.openclaw/backup/ 备份⽬录
+
+================================================================================
+FILE: openclaw-10-配置详解.pdf
+================================================================================
+--- Page 1/6 ---
+OpenClaw 配置详解
+完整配置⽂件说明
+配置⽂件位置
+主配置： ~/.openclaw/openclaw.json
+环境变量： ~/.openclaw/.env
+Agent 配置： ~/.openclaw/agents/
+完整配置示例
+{
+// Agent 默认配置
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-sonnet-4-6",
+fallback: "openai/gpt-4o"
+},
+thinking: "medium",
+tools: {
+profile: "full"
+}
+},
+list: [
+{
+id: "main",
+name: "主助⼿",
+model: "anthropic/claude-sonnet-4-6"
+}
+]
+},
+// 渠道配置
+channels: {
+telegram: {
+enabled: true,
+botToken: "YOUR_BOT_TOKEN"
+},
+discord: {
+enabled: false,
+botToken: "",
+applicationId: ""
+}
+--- Page 2/6 ---
+},
+// ⼯具配置
+tools: {
+profile: "full",
+allow: [],
+deny: [],
+byProvider: {}
+},
+// Gateway 配置
+gateway: {
+port: 18789,
+host: "localhost",
+logLevel: "info"
+},
+// 模型提供商
+providers: {
+anthropic: {
+apiKey: "sk-ant-xxx"
+},
+openai: {
+apiKey: "sk-xxx"
+}
+},
+// Webhook 配置
+hooks: {
+enabled: true,
+token: "your-secret",
+path: "/hooks"
+},
+// Cron 配置
+cron: {
+enabled: true,
+jobs: []
+},
+// 安全配置
+security: {
+pairing: {
+enabled: true,
+code: "YOUR_CODE"
+}
+--- Page 3/6 ---
+}
+}
+配置层级
+配置按以下优先级加载：
+1. 环境变量 - 最⾼优先级
+2. 命令⾏参数
+3. Agent 配置
+4. 全局默认配置
+模型配置
+单模型
+{
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-sonnet-4-6"
+}
+}
+}
+}
+多模型（主备）
+{
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-opus-4-6",
+fallback: "openai/gpt-4o"
+}
+}
+}
+}
+按任务类型
+{
+agents: {
+defaults: {
+--- Page 4/6 ---
+model: {
+primary: "anthropic/claude-sonnet-4-6",
+reasoning: "anthropic/claude-opus-4-6",
+fast: "anthropic/claude-haiku-3-5"
+}
+}
+}
+}
+渠道配置
+Telegram
+{
+channels: {
+telegram: {
+enabled: true,
+botToken: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+}
+}
+}
+Discord
+{
+channels: {
+discord: {
+enabled: true,
+botToken: "YOUR_BOT_TOKEN",
+applicationId: "YOUR_APP_ID"
+}
+}
+}
+WhatsApp
+{
+channels: {
+whatsapp: {
+enabled: true
+}
+}
+}
+--- Page 5/6 ---
+⼯具配置
+Profile 配置
+{
+tools: {
+profile: "coding" // full | coding | messaging | minimal
+}
+}
+允许/拒绝
+{
+tools: {
+allow: ["group:fs", "web_search"],
+deny: ["exec"]
+}
+}
+环境变量
+# API Keys
+ANTHROPIC_API_KEY=sk-ant-xxx
+OPENAI_API_KEY=sk-xxx
+GOOGLE_API_KEY=AIza-xxx
+# Gateway
+OPENCLAW_GATEWAY_PORT=18789
+OPENCLAW_GATEWAY_HOST=localhost
+# Paths
+OPENCLAW_HOME=~/.openclaw
+OPENCLAW_CONFIG_PATH=~/.openclaw/openclaw.json
+🎯 快速参考
+配置位置
+⽂件 说明
+~/.openclaw/openclaw.json 主配置
+~/.openclaw/.env 环境变量
+--- Page 6/6 ---
+~/.openclaw/agents/ Agent 配置
+配置命令
+命令 说明
+openclaw configure 交互式配置
+openclaw config get <key> 获取配置值
+openclaw config set <key> <value> 设置配置值
+配置验证
+# 验证配置
+openclaw doctor
+# 查看配置
+cat ~/.openclaw/openclaw.json
+
+================================================================================
+FILE: openclaw-11-安全与权限管理.pdf
+================================================================================
+--- Page 1/4 ---
+OpenClaw 安全与权限管理
+配对、权限控制和安全配置
+配对机制
+什么是配对？
+配对是防⽌未授权⽤户访问你的 Agent 的安全机制。
+配对⽅式
+⽅式 说明 命令
+配对码 输⼊配对码验证 openclaw pairing
+⼆维码 扫码配对 openclaw qr
+配置配对
+{
+gateway: {
+pairing: {
+enabled: true,
+code: "YOUR_PAIRING_CODE",
+timeout: 300 // 秒
+}
+}
+}
+权限控制
+Allowlist（⽩名单）
+{
+security: {
+allowlist: [
+"telegram:7601429954",
+"discord:123456789"
+]
+}
+}
+Blocklist（⿊名单）
+--- Page 2/4 ---
+{
+security: {
+blocklist: [
+"telegram:999999999"
+]
+}
+}
+⼯具权限
+⼯具配置⽂件
+Profile 包含的⼯具
+full 所有⼯具（默认）
+coding ⽂件 I/O、运⾏时、会话、内存、图⽚
+messaging 消息、会话管理
+minimal 仅 session_status
+配置示例
+{
+tools: {
+profile: "coding",
+allow: ["group:fs", "browser"],
+deny: ["exec"] // 拒绝优先
+}
+}
+沙箱模式
+启⽤沙箱
+{
+sandbox: {
+enabled: true,
+mode: "restrictive" // 或 "permissive"
+}
+}
+沙箱模式
+--- Page 3/4 ---
+模式 说明
+restrictive 严格限制，只允许显式允许的操作
+permissive 宽松模式，只拒绝显式禁⽌的操作
+密钥管理
+存储密钥
+# 设置密钥
+openclaw secrets set API_KEY "your-secret-key"
+# 列出密钥
+openclaw secrets list
+# 删除密钥
+openclaw secrets delete API_KEY
+在配置中引⽤
+{
+providers: {
+anthropic: {
+apiKey: "${secrets:ANTHROPIC_API_KEY}"
+}
+}
+}
+审批机制
+启⽤审批
+{
+approvals: {
+enabled: true,
+mode: "interactive" // 或 "auto"
+}
+}
+审批模式
+模式 说明
+--- Page 4/4 ---
+interactive 需要⼿动批准
+auto ⾃动批准（记录⽇志）
+🎯 快速参考
+安全功能 配置位置 命令
+配对 gateway.pairing openclaw pairing
+⽩名单 security.allowlist -
+⿊名单 security.blocklist -
+⼯具权限 tools -
+沙箱 sandbox -
+密钥 ~/.openclaw/secrets/ openclaw secrets
+审批 approvals -
+
+================================================================================
+FILE: openclaw-18-环境变量速查表.pdf
+================================================================================
+--- Page 1/2 ---
+OpenClaw 环境变量速查表
+所有环境变量快速查询
+Gateway 配置
+变量 默认值 说明
+OPENCLAW_GATEWAY_PORT 18789 Gateway 端⼝
+OPENCLAW_GATEWAY_HOST localhost Gateway 主机
+OPENCLAW_GATEWAY_LOG_LEVEL info ⽇志级别
+路径配置
+变量 默认值 说明
+OPENCLAW_HOME ~/.openclaw 主⽬录
+OPENCLAW_CONFIG_PATH ~/.openclaw/openclaw.json 配置⽂件路径
+OPENCLAW_STATE_DIR ~/.openclaw 状态⽬录
+OPENCLAW_LOGS_DIR ~/.openclaw/logs ⽇志⽬录
+API 密钥
+变量 说明
+ANTHROPIC_API_KEY Anthropic API 密钥
+OPENAI_API_KEY OpenAI API 密钥
+GOOGLE_API_KEY Google API 密钥
+DEEPSEEK_API_KEY DeepSeek API 密钥
+GROQ_API_KEY Groq API 密钥
+ZAI_API_KEY 智谱 API 密钥
+开发配置
+变量 默认值 说明
+OPENCLAW_DEV false 开发模式
+--- Page 2/2 ---
+OPENCLAW_PROFILE - 配置⽂件名
+OPENCLAW_NO_COLOR false 禁⽤彩⾊输出
+NO_COLOR - 禁⽤彩⾊输出（通⽤）
+⽹络配置
+变量 默认值 说明
+HTTP_PROXY - HTTP 代理
+HTTPS_PROXY - HTTPS 代理
+NO_PROXY - 不使⽤代理的地址
+Node.js 配置
+变量 默认值 说明
+NODE_ENV production Node 环境
+NODE_OPTIONS - Node 选项
+使⽤⽅式
+# 在 .env ⽂件中
+ANTHROPIC_API_KEY=sk-ant-xxx
+# 或在命令⾏
+export ANTHROPIC_API_KEY=sk-ant-xxx
+# 或在配置⽂件中引⽤
+{
+providers: {
+anthropic: {
+apiKey: "${env:ANTHROPIC_API_KEY}"
+}
+}
+}
+
+================================================================================
+FILE: openclaw-03-渠道配置全攻略.pdf
+================================================================================
+--- Page 1/7 ---
+OpenClaw 渠道配置全攻略
+20+ 聊天平台配置指南
+⽀持的渠道
+渠道 配置难度 特点 推荐指数
+Telegram ⭐ 简单 Bot API，只需 token ⭐⭐⭐⭐⭐
+Discord ⭐⭐ 中等 Bot API，⽀持服务器和私信 ⭐⭐⭐⭐
+WhatsApp ⭐⭐⭐ 较难 需要 QR 配对，功能完整 ⭐⭐⭐⭐
+Signal ⭐⭐ 中等 signal-cli，注重隐私 ⭐⭐⭐
+BlueBubbles ⭐⭐⭐ 较难 iMessage 推荐，功能最全 ⭐⭐⭐⭐
+Slack ⭐⭐ 中等 Bolt SDK，企业⽀持 ⭐⭐⭐
+WebChat ⭐ 简单 内置 Web 界⾯ ⭐⭐⭐
+IRC ⭐⭐ 中等 经典 IRC，⽀持频道和私信 ⭐⭐
+💡 推荐：Telegram 最快上⼿（只需 bot token），WhatsApp 最流⾏（需 QR 配对）。
+Telegram 配置
+1. 创建 Bot
+1. 在 Telegram 搜索 @BotFather
+2. 发送 /newbot
+3. 按提示设置名称和⽤户名
+4. 获取 Bot Token（格式： 123456789:ABCdefGHIjklMNOpqrsTUVwxyz ）
+2. 配置 OpenClaw
+# ⽅式⼀：交互式配置
+openclaw channels enable telegram
+# ⽅式⼆：直接编辑配置
+# 编辑 ~/.openclaw/openclaw.json
+{
+"channels": {
+"telegram": {
+"enabled": true,
+"botToken": "YOUR_BOT_TOKEN"
+}
+--- Page 2/7 ---
+}
+}
+3. 启动服务
+openclaw gateway restart
+4. 测试
+在 Telegram 中找到你的 Bot，发送消息，应收到 AI 回复。
+⚠ 注意：Bot 需要先在 Telegram 中启动（发送 /start ）。
+Discord 配置
+1. 创建 Bot
+1. 访问 Discord Developer Portal
+2. 创建新应⽤
+3. 进⼊ "Bot" ⻚⾯，添加 Bot
+4. 复制 Token
+5. 在 "OAuth2 > URL Generator" 中⽣成邀请链接
+勾选 bot 和 applications.commands
+选择所需权限（Send Messages, Read Messages 等）
+2. 配置 OpenClaw
+{
+"channels": {
+"discord": {
+"enabled": true,
+"botToken": "YOUR_DISCORD_BOT_TOKEN",
+"applicationId": "YOUR_APPLICATION_ID"
+}
+}
+}
+3. 邀请 Bot
+将⽣成的邀请链接发送到浏览器，选择要添加的服务器。
+💡 说明：Discord Bot 可以在服务器、频道和私信中使⽤。
+WhatsApp 配置
+1. 安装插件
+--- Page 3/7 ---
+openclaw plugins install whatsapp
+2. 配置
+{
+"channels": {
+"whatsapp": {
+"enabled": true
+}
+}
+}
+3. 扫码配对
+# 启动 Gateway
+openclaw gateway start
+# 扫描⼆维码
+# 在 WhatsApp ⼿机 App > 设置 > 已关联的设备 > 关联设备
+# 扫描终端显示的⼆维码
+⚠ 注意：WhatsApp 配对后会在本地存储会话状态，⾸次需要扫码，之后⾃动重连。
+Signal 配置
+1. 安装 signal-cli
+# macOS
+brew install signal-cli
+# Linux
+sudo apt install signal-cli
+2. 注册或关联号码
+# 注册新号码
+signal-cli -u +1234567890 register
+# 验证号码
+signal-cli -u +1234567890 verify CODE
+3. 配置 OpenClaw
+--- Page 4/7 ---
+{
+"channels": {
+"signal": {
+"enabled": true,
+"phoneNumber": "+1234567890"
+}
+}
+}
+BlueBubbles（iMessage）
+1. 安装 BlueBubbles 服务器
+1. 在 macOS 上安装 BlueBubbles 服务器
+2. 配置服务器并获取 API 密钥
+2. 配置 OpenClaw
+{
+"channels": {
+"bluebubbles": {
+"enabled": true,
+"serverUrl": "http://your-server:1234",
+"apiKey": "YOUR_API_KEY"
+}
+}
+}
+💡 说明：BlueBubbles 是 iMessage 的推荐⽅式，⽀持所有功能（编辑、撤销、效果等）。
+Slack 配置
+1. 创建 Slack App
+1. 访问 Slack API
+2. 创建新应⽤
+3. 添加 Bot Token Scopes（chat:write, im:history, im:read 等）
+4. 安装到⼯作区并获取 Bot Token
+2. 配置 OpenClaw
+{
+"channels": {
+"slack": {
+"enabled": true,
+"botToken": "xoxb-YOUR-BOT-TOKEN",
+--- Page 5/7 ---
+"appToken": "xapp-YOUR-APP-TOKEN"
+}
+}
+}
+WebChat（内置）
+配置
+{
+"channels": {
+"webchat": {
+"enabled": true
+}
+}
+}
+访问
+# 打开 Dashboard
+openclaw dashboard
+# 或直接访问
+# http://localhost:18789/webchat
+💡 说明：WebChat 是内置的 Web 聊天界⾯，⽆需额外配置。
+多渠道同时运⾏
+OpenClaw ⽀持同时运⾏多个渠道：
+{
+"channels": {
+"telegram": {
+"enabled": true,
+"botToken": "YOUR_TELEGRAM_TOKEN"
+},
+"discord": {
+"enabled": true,
+"botToken": "YOUR_DISCORD_TOKEN"
+},
+"webchat": {
+"enabled": true
+}
+--- Page 6/7 ---
+}
+}
+💡 说明：OpenClaw 会根据聊天来源⾃动路由到对应渠道。
+配对与安全
+配对机制
+所有渠道都⽀持配对（pairing），防⽌未授权访问：
+# 显示配对码
+openclaw pairing
+# ⽣成⼆维码
+openclaw qr
+配置配对
+{
+"gateway": {
+"pairing": {
+"enabled": true,
+"code": "YOUR_PAIRING_CODE"
+}
+}
+}
+群组⾏为
+⽀持群组的渠道
+Telegram
+Discord
+WhatsApp
+Slack
+IRC
+群组配置
+{
+"channels": {
+"telegram": {
+"enabled": true,
+"groupBehavior": {
+"mentionOnly": true // 仅在被提及时回复
+--- Page 7/7 ---
+}
+}
+}
+}
+故障排除
+Telegram ⽆法收到消息
+1. 检查 Bot Token 是否正确
+2. 确认 Bot 已启动（发送 /start ）
+3. 检查 Gateway 是否运⾏
+WhatsApp ⽆法配对
+1. 确认⼿机⽹络正常
+2. 清除旧会话： rm -rf ~/.openclaw/whatsapp/*
+3. 重新扫码
+Discord Bot ⽆权限
+1. 检查 Bot 权限设置
+2. 重新⽣成邀请链接并邀请 Bot
+3. 确认 Bot 在服务器中
+🎯 快速参考
+渠道 最快上⼿ 配置⽂件路径
+Telegram 只需 Bot Token channels.telegram.botToken
+Discord 需创建 App channels.discord.botToken
+WhatsApp 需扫码配对 channels.whatsapp
+Signal 需注册号码 channels.signal.phoneNumber
+WebChat ⽆需配置 channels.webchat.enabled
+
+================================================================================
+FILE: openclaw-04-模型提供商指南.pdf
+================================================================================
+--- Page 1/10 ---
+OpenClaw 模型提供商指南
+38+ AI 模型提供商配置
+⽀持的主要提供商
+提供商 模型示例 特点 配置难度
+Anthropic Claude 4, Claude 3.5 安全可靠，⻓上下⽂ ⭐ 简单
+OpenAI GPT-4o, GPT-4 Turbo 功能全⾯，⽣态完善 ⭐ 简单
+Google Gemini 2.0, Gemini 1.5 多模态，⻓上下⽂ ⭐ 简单
+DeepSeek DeepSeek V3, R1 性价⽐⾼，推理强 ⭐ 简单
+GLM GLM-4, ChatGLM 中⽂优化，智谱 AI ⭐ 简单
+MiniMax MiniMax M2 中⽂优化，国产 ⭐ 简单
+Moonshot Kimi, Kimi Coding ⻓上下⽂，国产 ⭐ 简单
+Groq Llama 3, Mixtral 推理速度快 ⭐ 简单
+Ollama 本地模型 本地运⾏，隐私 ⭐⭐ 中等
+OpenRouter 多种模型 统⼀接⼝，灵活 ⭐ 简单
+快速配置
+1. 设置默认模型
+{
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-opus-4-6"
+}
+}
+}
+}
+2. 配置 API 密钥
+# ⽅式⼀：交互式配置
+openclaw onboard
+# ⽅式⼆：环境变量
+--- Page 2/10 ---
+export ANTHROPIC_API_KEY=sk-ant-xxx
+export OPENAI_API_KEY=sk-xxx
+# ⽅式三：配置⽂件
+# 编辑 ~/.openclaw/openclaw.json
+{
+"providers": {
+"anthropic": {
+"apiKey": "sk-ant-xxx"
+}
+}
+}
+Anthropic（推荐）
+获取 API 密钥
+1. 访问 Anthropic Console
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+anthropic: {
+apiKey: "sk-ant-xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-opus-4-6"
+}
+}
+}
+}
+可⽤模型
+anthropic/claude-opus-4-6 - 最强推理
+anthropic/claude-sonnet-4-6 - 平衡性能
+anthropic/claude-haiku-3-5 - 快速响应
+OpenAI
+--- Page 3/10 ---
+获取 API 密钥
+1. 访问 OpenAI Platform
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+openai: {
+apiKey: "sk-xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "openai/gpt-4o"
+}
+}
+}
+}
+可⽤模型
+openai/gpt-4o - 多模态
+openai/gpt-4-turbo - 快速
+openai/o1-preview - 推理增强
+Google（Gemini）
+获取 API 密钥
+1. 访问 Google AI Studio
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+google: {
+apiKey": "AIza-xxx"
+}
+},
+agents: {
+defaults: {
+--- Page 4/10 ---
+model: {
+primary: "google/gemini-2.0-flash"
+}
+}
+}
+}
+可⽤模型
+google/gemini-2.0-flash - 快速
+google/gemini-1.5-pro - ⻓上下⽂
+google/gemini-1.5-flash - 轻量
+DeepSeek（性价⽐⾼）
+获取 API 密钥
+1. 访问 DeepSeek Platform
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+deepseek: {
+apiKey: "sk-xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "deepseek/deepseek-chat"
+}
+}
+}
+}
+可⽤模型
+deepseek/deepseek-chat - 对话
+deepseek/deepseek-reasoner - 推理（R1）
+GLM（智谱 AI，中⽂优化）
+获取 API 密钥
+1. 访问 智谱开放平台
+--- Page 5/10 ---
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+zai: {
+apiKey: "xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "zai/glm-4"
+}
+}
+}
+}
+可⽤模型
+zai/glm-4 - 最新版本
+zai/glm-4-air - 轻量版
+zai/chatglm-turbo - 快速
+MiniMax（国产）
+获取 API 密钥
+1. 访问 MiniMax 开放平台
+2. 创建 API Key
+3. 复制密钥和 Group ID
+配置
+{
+providers: {
+minimax: {
+apiKey: "xxx",
+groupId: "xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "minimax/MiniMax-Text-01"
+--- Page 6/10 ---
+}
+}
+}
+}
+Moonshot（Kimi）
+获取 API 密钥
+1. 访问 Moonshot AI
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+moonshot: {
+apiKey: "sk-xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "moonshot/moonshot-v1-8k"
+}
+}
+}
+}
+可⽤模型
+moonshot/moonshot-v1-8k - 8K 上下⽂
+moonshot/moonshot-v1-32k - 32K 上下⽂
+moonshot/moonshot-v1-128k - 128K 上下⽂
+Groq（⾼速推理）
+获取 API 密钥
+1. 访问 Groq Console
+2. 创建 API Key
+3. 复制密钥
+配置
+--- Page 7/10 ---
+{
+providers: {
+groq: {
+apiKey: "gsk_xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "groq/llama-3.3-70b-versatile"
+}
+}
+}
+}
+可⽤模型
+groq/llama-3.3-70b-versatile - Llama 3.3 70B
+groq/mixtral-8x7b-32768 - Mixtral
+Ollama（本地模型）
+安装 Ollama
+# macOS
+brew install ollama
+# Linux
+curl -fsSL https://ollama.ai/install.sh | bash
+# 启动服务
+ollama serve
+拉取模型
+ollama pull llama3.2
+ollama pull qwen2.5
+配置 OpenClaw
+{
+providers: {
+ollama: {
+baseUrl: "http://localhost:11434"
+--- Page 8/10 ---
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "ollama/llama3.2"
+}
+}
+}
+}
+OpenRouter（统⼀⽹关）
+获取 API 密钥
+1. 访问 OpenRouter
+2. 创建 API Key
+3. 复制密钥
+配置
+{
+providers: {
+openrouter: {
+apiKey: "sk-or-xxx"
+}
+},
+agents: {
+defaults: {
+model: {
+primary: "openrouter/anthropic/claude-opus-4"
+}
+}
+}
+}
+特点
+统⼀访问多种模型
+按需付费
+⾃动回退
+多模型配置
+主备配置
+--- Page 9/10 ---
+{
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-opus-4-6",
+fallback: "openai/gpt-4o"
+}
+}
+}
+}
+不同任务使⽤不同模型
+{
+agents: {
+defaults: {
+model: {
+primary: "anthropic/claude-sonnet-4-6",
+reasoning: "anthropic/claude-opus-4-6",
+fast: "anthropic/claude-haiku-3-5"
+}
+}
+}
+}
+模型测试
+测试连接
+openclaw models test anthropic/claude-opus-4-6
+列出所有模型
+openclaw models list
+🎯 快速参考
+提供商 环境变量 模型前缀
+Anthropic ANTHROPIC_API_KEY anthropic/
+OpenAI OPENAI_API_KEY openai/
+--- Page 10/10 ---
+Google GOOGLE_API_KEY google/
+DeepSeek DEEPSEEK_API_KEY deepseek/
+GLM ZAI_API_KEY zai/
+MiniMax MINIMAX_API_KEY minimax/
+Groq GROQ_API_KEY groq/
+Ollama - ollama/
+
+================================================================================
+FILE: openclaw-05-工具功能大全.pdf
+================================================================================
+--- Page 1/6 ---
+OpenClaw ⼯具功能⼤全
+40+ 内置⼯具和插件扩展
+⼯具系统概览
+OpenClaw 通过⼯具执⾏所有操作：读⽂件、运⾏命令、浏览⽹⻚、发送消息等。
+三个层次
+层次 说明 示例
+⼯具 Agent 可调⽤的函数 exec、browser、web_search
+技能 注⼊到系统提示的 Markdown ⽂件 SKILL.md
+插件 打包渠道、⼯具、技能等 npm 包
+内置⼯具
+⽂件操作
+⼯具 说明
+read 读取⽂件内容
+write 写⼊⽂件
+edit 编辑⽂件（精确替换）
+apply_patch 多块⽂件补丁
+# 读取⽂件
+read path/to/file.md
+# 写⼊⽂件
+write path/to/file.md "content"
+# 编辑⽂件
+edit path/to/file.md "oldText" "newText"
+执⾏命令
+⼯具 说明
+exec 运⾏ shell 命令
+process 管理后台进程
+--- Page 2/6 ---
+# 执⾏命令
+exec "ls -la"
+# 后台运⾏
+exec "long-running-command" --background
+# 查看进程
+process --action list
+⽹⻚操作
+⼯具 说明
+web_search ⽹⻚搜索
+web_fetch 获取⽹⻚内容
+browser 控制 Chromium 浏览器
+# ⽹⻚搜索
+web_search "OpenClaw AI"
+# 获取⽹⻚
+web_fetch "https://docs.openclaw.ai"
+# 浏览器操作
+browser --action navigate --url "https://example.com"
+browser --action screenshot
+会话管理
+⼯具 说明
+sessions_list 列出会话
+sessions_history 查看历史
+sessions_send 发送消息
+sessions_spawn 创建⼦代理
+subagents 管理⼦代理
+# 列出会话
+sessions_list
+--- Page 3/6 ---
+# 查看历史
+sessions_history --sessionKey agent:main
+# 发送消息
+sessions_send --sessionKey agent:main --message "Hello"
+消息发送
+⼯具 说明
+message 跨渠道发送消息
+# 发送到特定渠道
+message --to telegram:7601429954 --text "Hello"
+图⽚处理
+⼯具 说明
+image 分析图⽚
+image_generate ⽣成图⽚
+# 分析图⽚
+image --prompt "描述这张图⽚" --image /path/to/image.jpg
+# ⽣成图⽚
+image_generate --prompt "⼀只可爱的⼩猫"
+内存管理
+⼯具 说明
+memory_search 搜索记忆
+memory_get 获取记忆
+# 搜索记忆
+memory_search "项⽬名称"
+# 获取记忆
+memory_get --path MEMORY.md
+节点与设备
+--- Page 4/6 ---
+⼯具 说明
+nodes 发现和连接设备
+canvas Canvas 节点操作
+# 列出节点
+nodes --action list
+# 连接节点
+nodes --action connect --nodeId device-001
+⾃动化
+⼯具 说明
+cron 管理定时任务
+gateway 管理 Gateway
+# 添加定时任务
+cron --action add --schedule "0 9 * * *" --command "echo 'Good morning'"
+# 重启 Gateway
+gateway --action restart
+⼯具配置
+允许/拒绝列表
+{
+tools: {
+allow: ["group:fs", "browser", "web_search"],
+deny: ["exec"], // 拒绝优先于允许
+}
+}
+⼯具配置⽂件
+Profile 包含的⼯具
+full 所有⼯具（默认）
+coding ⽂件 I/O、运⾏时、会话、内存、图⽚
+--- Page 5/6 ---
+messaging 消息、会话管理
+minimal 仅 session_status
+{
+tools: {
+profile: "coding" // 使⽤ coding 配置
+}
+}
+⼯具组
+组 包含的⼯具
+group:runtime exec、bash、process
+group:fs read、write、edit、apply_patch
+group:sessions sessions_list、sessions_history 等
+group:memory memory_search、memory_get
+group:web web_search、web_fetch
+group:ui browser、canvas
+group:automation cron、gateway
+group:messaging message
+group:nodes nodes
+group:openclaw 所有内置⼯具
+插件提供的⼯具
+常⽤插件
+插件 ⼯具 说明
+Lobster lobster 类型化⼯作流
+LLM Task llm_task JSON 输出
+Diffs diffs Diff 查看器
+OpenProse prose Markdown ⼯作流
+安装插件
+--- Page 6/6 ---
+openclaw plugins install <plugin-name>
+🎯 快速参考
+类别 ⼯具 常⽤命令
+⽂件 read、write、edit read file.md
+命令 exec、process exec "ls"
+⽹络 web_search、web_fetch web_search "query"
+会话 sessions_* sessions_list
+消息 message message --to telegram:xxx
+图⽚ image、image_generate image --prompt "..."
+⾃动化 cron、gateway cron --action add
+
+================================================================================
+FILE: openclaw-06-自动化工作流.pdf
+================================================================================
+--- Page 1/4 ---
+OpenClaw ⾃动化⼯作流
+Cron 定时任务与 Webhook ⾃动化
+Cron 定时任务
+配置位置
+{
+cron: {
+enabled: true,
+jobs: [
+{
+id: "morning-reminder",
+schedule: "0 9 * * *",
+command: "echo 'Good morning!'",
+sessionTarget: "main"
+}
+]
+}
+}
+时间表达式
+表达式 说明
+* * * * * 每分钟
+0 * * * * 每⼩时
+0 9 * * * 每天 9:00
+0 9 * * 1 每周⼀ 9:00
+0 9 1 * * 每⽉1号 9:00
+说明：前5个字段依次为：分 时 ⽇ ⽉ 周
+执⾏模式
+模式 说明
+main 在主会话的下⼀个⼼跳执⾏
+isolated 独⽴代理会话（cron:）
+current 绑定到创建时的会话
+--- Page 2/4 ---
+session:custom-id 指定持久会话
+命令示例
+# 添加任务
+openclaw cron add --schedule "0 9 * * *" --command "openclaw status"
+# 列出任务
+openclaw cron list
+# 删除任务
+openclaw cron remove <job-id>
+任务持久化
+任务存储在 ~/.openclaw/cron/ ⽬录，重启后不会丢失。
+Webhook ⾃动化
+启⽤ Webhook
+{
+hooks: {
+enabled: true,
+token: "your-secret-token",
+path: "/hooks",
+allowedAgentIds: ["hooks", "main"]
+}
+}
+注意：token 必填，⽤于验证请求。
+Webhook 请求
+curl -X POST http://localhost:18789/hooks \
+-H "Authorization: Bearer your-secret-token" \
+-H "Content-Type: application/json" \
+-d '{
+"message": "Check my email",
+"wakeMode": "now",
+"deliver": true,
+"channel": "telegram",
+--- Page 3/4 ---
+"to": "7601429954"
+}'
+请求参数
+参数 必填 说明
+message 是 Agent 要处理的消息
+name 否 Hook 名称（⽤于⽇志）
+agentId 否 指定代理 ID
+wakeMode 否 now（⽴即）或 next-heartbeat
+deliver 否 是否发送响应（默认 true）
+channel 否 发送渠道（默认 last）
+to 否 接收者 ID
+model 否 模型覆盖
+timeoutSeconds 否 超时时间
+使⽤场景
+1. GitHub 集成
+{
+"message": "Review the latest commit",
+"name": "GitHub",
+"agentId": "hooks"
+}
+2. 外部触发
+# 从外部系统触发
+curl -X POST http://localhost:18789/hooks \
+-H "Authorization: Bearer token" \
+-d '{"message": "Generate daily report"}'
+3. 定时外部调⽤
+配合外部定时器（如 GitHub Actions）调⽤ Webhook。
+Cron vs Webhook
+--- Page 4/4 ---
+特性 Cron Webhook
+触发⽅式 时间触发 外部请求
+精确度 分钟级 实时
+依赖 Gateway 内置 需要外部调⽤
+适⽤场景 定时任务 外部系统集成
+Cron vs Heartbeat
+特性 Cron Heartbeat
+执⾏位置 Gateway Agent 主会话
+上下⽂ 独⽴或绑定 主会话上下⽂
+适⽤场景 精确时间 批量检查
+说明：Heartbeat 是周期性轮询，Cron 是精确时间触发。
+🎯 快速参考
+Cron 常⽤命令
+命令 说明
+openclaw cron list 列出任务
+openclaw cron add 添加任务
+openclaw cron remove <id> 删除任务
+Webhook 常⽤参数
+参数 说明
+message 消息内容
+wakeMode 触发模式
+deliver 是否回复
+channel 回复渠道
+
+================================================================================
+FILE: openclaw-07-核心概念与架构.pdf
+================================================================================
+--- Page 1/4 ---
+OpenClaw 核⼼概念与架构
+理解 OpenClaw 的核⼼组件
+架构概览
+┌─────────────────────────────────────┐
+│ ⽤户界⾯ (CLI/WebChat/渠道) │
+└──────────────┬──────────────────────┘
+│
+┌──────────────▼──────────────────────┐
+│ Gateway (⽹关) │
+│ - 消息路由 │
+│ - 会话管理 │
+│ - ⼯具调⽤ │
+└──────────────┬──────────────────────┘
+│
+┌──────────────▼──────────────────────┐
+│ AI 模型提供商 │
+│ (Anthropic/OpenAI/Google/...) │
+└─────────────────────────────────────┘
+核⼼概念
+Agent（代理）
+Agent 是 AI 助⼿的配置单元，包含：
+模型选择
+⼯具权限
+系统提示
+⼯作⽬录
+{
+agents: {
+list: [
+{
+id: "main",
+model: "anthropic/claude-sonnet-4-6",
+tools: { profile: "coding" }
+}
+]
+}
+}
+--- Page 2/4 ---
+Session（会话）
+Session 是对话上下⽂，包含：
+消息历史
+状态信息
+会话密钥
+会话密钥格式： agent:<agent-id>:<channel>:<chat-id>
+示例：
+agent:main:telegram:direct:7601429954
+agent:writer:discord:server:123456
+Channel（渠道）
+Channel 是消息通道，⽀持：
+Telegram
+Discord
+WhatsApp
+Signal
+Slack
+WebChat
+等 20+ 平台
+Tool（⼯具）
+Tool 是 Agent 可调⽤的函数，包括：
+⽂件操作：read、write、edit
+命令执⾏：exec、process
+⽹络访问：web_search、web_fetch
+浏览器控制：browser
+消息发送：message
+Gateway（⽹关）
+功能
+消息路由和分发
+会话管理
+⼯具调⽤执⾏
+定时任务调度
+Webhook 处理
+配置⽂件
+--- Page 3/4 ---
+{
+gateway: {
+port: 18789,
+host: "localhost"
+}
+}
+配置⽂件结构
+主配置⽂件
+位置： ~/.openclaw/openclaw.json
+{
+// Agent 配置
+agents: {
+defaults: { model: { primary: "anthropic/claude-sonnet-4-6" } },
+list: []
+},
+// 渠道配置
+channels: {
+telegram: { enabled: true, botToken: "xxx" }
+},
+// ⼯具配置
+tools: {
+profile: "full",
+allow: [],
+deny: []
+},
+// Gateway 配置
+gateway: {
+port: 18789
+}
+}
+⼯作⽬录
+⽬录结构
+~/.openclaw/
+├── openclaw.json # 主配置
+--- Page 4/4 ---
+├── .env # 环境变量
+├── logs/ # ⽇志⽂件
+├── cron/ # 定时任务
+├── skills/ # 技能⽂件
+├── agents/ # Agent 配置
+├── telegram/ # Telegram 状态
+└── devices/ # 设备注册
+消息流
+1. ⽤户发送消息（从渠道）
+2. Gateway 接收并路由到对应 Session
+3. Session 调⽤ AI 模型
+4. 模型返回响应（可能包含⼯具调⽤）
+5. Gateway 执⾏⼯具调⽤
+6. 返回结果给模型
+7. 模型⽣成最终响应
+8. Gateway 发送响应到渠道
+🎯 快速参考
+概念 说明 配置位置
+Agent AI 助⼿配置 agents.list
+Session 对话上下⽂ ⾃动管理
+Channel 消息通道 channels
+Tool ⼯具函数 tools
+Gateway ⽹关服务 gateway
+常⽤命令
+命令 说明
+openclaw agents list 列出所有 Agent
+openclaw sessions list 列出所有会话
+openclaw gateway status 查看 Gateway 状态
+
+================================================================================
+FILE: openclaw-12-插件开发指南.pdf
+================================================================================
+--- Page 1/3 ---
+OpenClaw 插件开发指南
+开发⾃定义插件扩展功能
+插件类型
+类型 说明
+渠道插件 添加新的消息渠道
+⼯具插件 添加新的⼯具函数
+模型插件 添加新的模型提供商
+技能插件 添加预定义技能
+插件结构
+my-plugin/
+├── package.json
+├── index.js
+├── README.md
+└── src/
+├── tools/
+├── channels/
+└── skills/
+创建⼯具插件
+package.json
+{
+"name": "openclaw-plugin-mytool",
+"version": "1.0.0",
+"main": "index.js",
+"openclaw": {
+"type": "plugin"
+}
+}
+index.js
+module.exports = {
+name: 'my-tool',
+--- Page 2/3 ---
+tools: [
+{
+name: 'my_tool',
+description: 'My custom tool',
+parameters: {
+type: 'object',
+properties: {
+input: { type: 'string' }
+},
+required: ['input']
+},
+handler: async (params) => {
+return { result: `Processed: ${params.input}` };
+}
+}
+]
+};
+创建渠道插件
+module.exports = {
+name: 'my-channel',
+channels: {
+mychannel: {
+enabled: true,
+handler: async (message) => {
+// 处理消息
+return { success: true };
+}
+}
+}
+};
+发布插件
+# 发布到 npm
+npm publish
+# 或发布到 ClawHub
+openclaw plugins publish
+安装插件
+--- Page 3/3 ---
+# 从 npm 安装
+openclaw plugins install openclaw-plugin-mytool
+# 从本地安装
+openclaw plugins install ./path/to/plugin
+🎯 快速参考
+步骤 命令
+创建 mkdir my-plugin && cd my-plugin
+初始化 npm init
+开发 编写 index.js
+测试 openclaw plugins install .
+发布 npm publish
+
+================================================================================
+FILE: openclaw-13-高级配置与定制.pdf
+================================================================================
+--- Page 1/3 ---
+OpenClaw ⾼级配置与定制
+深度定制和⾼级功能
+Skills（技能）
+什么是 Skill？
+Skill 是注⼊到系统提示的 Markdown ⽂件，指导 Agent 使⽤⼯具。
+Skill ⽂件
+位置： SKILL.md 或 skills/skill-name/SKILL.md
+# My Skill
+## 功能说明
+这个技能⽤于...
+## 使⽤规则
+1. 规则⼀
+2. 规则⼆
+## 示例
+\`\`\`bash
+openclaw command
+\`\`\`
+⾃定义系统提示
+配置
+{
+agents: {
+defaults: {
+systemPrompt: {
+prepend: "You are a helpful assistant.",
+append: "Always be concise."
+}
+}
+}
+}
+⼯作⽬录
+--- Page 2/3 ---
+配置⼯作⽬录
+{
+workspace: {
+path: "~/my-project",
+autoCommit: true
+}
+}
+多 Agent 协作
+配置多个 Agent
+{
+agents: {
+list: [
+{
+id: "writer",
+name: "写作助⼿",
+model: "anthropic/claude-sonnet-4-6",
+tools: { profile: "coding" }
+},
+{
+id: "researcher",
+name: "研究助⼿",
+model: "anthropic/claude-opus-4-6",
+tools: { profile: "full" }
+}
+]
+}
+}
+使⽤特定 Agent
+openclaw agent use writer
+⼦代理（Subagents）
+启动⼦代理
+# 运⾏⼦代理
+openclaw sessions spawn --task "Research OpenClaw plugins"
+--- Page 3/3 ---
+模型别名
+配置别名
+{
+models: {
+aliases: {
+"fast": "anthropic/claude-haiku-3-5",
+"smart": "anthropic/claude-opus-4-6"
+}
+}
+}
+使⽤别名
+openclaw --model fast
+🎯 快速参考
+功能 配置位置
+Skills skills/ ⽬录
+系统提示 agents.defaults.systemPrompt
+⼯作⽬录 workspace
+多 Agent agents.list
+模型别名 models.aliases
+
+================================================================================
+FILE: openclaw-15-最佳实践与案例.pdf
+================================================================================
+--- Page 1/3 ---
+OpenClaw 最佳实践与案例
+使⽤技巧和实际案例
+基本原则
+1. 最⼩权限原则：只授予必要的⼯具权限
+2. 明确配对：始终启⽤配对机制
+3. 定期备份：定期备份配置和数据
+4. 监控⽇志：定期查看⽇志异常
+推荐配置
+个⼈使⽤
+{
+agents: {
+defaults: {
+model: { primary: "anthropic/claude-sonnet-4-6" },
+tools: { profile: "full" }
+}
+},
+channels: {
+telegram: { enabled: true }
+},
+security: {
+pairing: { enabled: true }
+}
+}
+团队使⽤
+{
+agents: {
+list: [
+{
+id: "team-assistant",
+tools: { profile: "coding" }
+}
+]
+},
+security: {
+allowlist: ["telegram:123456", "telegram:789012"]
+--- Page 2/3 ---
+}
+}
+使⽤场景
+1. ⽇常助⼿
+# 查看⽇程
+openclaw message "Check my calendar today"
+# 发送提醒
+openclaw cron add --schedule "0 9 * * *" --command "Good morning!"
+2. 代码助⼿
+{
+agents: {
+defaults: {
+model: { primary: "anthropic/claude-sonnet-4-6" },
+tools: {
+profile: "coding",
+deny: ["exec"] // 禁⽌执⾏命令
+}
+}
+}
+}
+3. ⾃动化监控
+# 定时检查
+openclaw cron add --schedule "*/30 * * * *" \
+--command "Check system status"
+# Webhook 集成
+curl -X POST http://localhost:18789/hooks \
+-H "Authorization: Bearer token" \
+-d '{"message":"Check server status"}'
+性能优化
+减少上下⽂
+--- Page 3/3 ---
+{
+agents: {
+defaults: {
+maxTokens: 4096, // 限制上下⽂⼤⼩
+compactThreshold: 0.8 // 80%时压缩
+}
+}
+}
+模型选择
+场景 推荐模型
+快速响应 claude-haiku-3-5
+⽇常对话 claude-sonnet-4-6
+复杂推理 claude-opus-4-6
+🎯 快速参考
+场景 配置重点
+个⼈ profile: full + 配对
+团队 allowlist + 最⼩权限
+⾃动化 Cron + Webhook
+代码 profile: coding + 沙箱
+
+================================================================================
+FILE: openclaw-14-故障排除手册.pdf
+================================================================================
+--- Page 1/4 ---
+OpenClaw 故障排除⼿册
+常⻅问题诊断和解决⽅案
+Gateway ⽆法启动
+检查端⼝占⽤
+lsof -i :18789
+kill -9 <PID>
+检查配置
+openclaw doctor
+cat ~/.openclaw/openclaw.json
+查看⽇志
+tail -f ~/.openclaw/logs/error.log
+Telegram ⽆法收到消息
+检查 Bot Token
+# 测试 Bot Token
+curl https://api.telegram.org/bot<YOUR_TOKEN>/getMe
+检查配置
+{
+channels: {
+telegram: {
+enabled: true,
+botToken: "正确的token"
+}
+}
+}
+检查 Gateway
+openclaw gateway status
+--- Page 2/4 ---
+模型调⽤失败
+检查 API 密钥
+# Anthropic
+curl https://api.anthropic.com/v1/messages \
+-H "x-api-key: $ANTHROPIC_API_KEY"
+# OpenAI
+curl https://api.openai.com/v1/models \
+-H "Authorization: Bearer $OPENAI_API_KEY"
+检查配置
+{
+providers: {
+anthropic: {
+apiKey: "正确的key"
+}
+}
+}
+⼯具调⽤失败
+检查⼯具权限
+{
+tools: {
+profile: "full",
+allow: ["group:fs", "exec"],
+deny: []
+}
+}
+检查沙箱
+openclaw sandbox status
+WhatsApp 配对失败
+清除旧会话
+--- Page 3/4 ---
+rm -rf ~/.openclaw/whatsapp/*
+openclaw gateway restart
+重新扫码
+openclaw qr
+Discord Bot ⽆权限
+检查权限
+1. 访问 Discord Developer Portal
+2. 检查 Bot 权限（Send Messages, Read Messages）
+3. 重新邀请 Bot
+性能问题
+检查资源使⽤
+openclaw status --resources
+清理⽇志
+# 清理旧⽇志
+find ~/.openclaw/logs -mtime +7 -delete
+配置损坏
+重置配置
+# 备份
+cp ~/.openclaw/openclaw.json ~/.openclaw/openclaw.json.bak
+# 重置
+openclaw reset
+# 重新配置
+openclaw configure
+🎯 快速参考
+--- Page 4/4 ---
+问题 命令
+系统诊断 openclaw doctor
+查看⽇志 openclaw logs --tail
+检查状态 openclaw status
+重启服务 openclaw gateway restart
+清除缓存 rm -rf ~/.openclaw/cache/*
+
+================================================================================
+FILE: openclaw-19-故障排除速查表.pdf
+================================================================================
+--- Page 1/2 ---
+OpenClaw 故障排除速查表
+匉问题快速查找解决⽅案
+Gateway 问题
+磀查项 解决⽅案
+端⼝占⽤ lsof -i :18789 + kill -9 <PID>
+配置错误 openclaw doctor
+权限问题 sudo openclaw gateway start
+服务未启动 openclaw gateway start
+渠道问题
+检查项 解决⽅案
+Token 错误 检查 botToken 配置
+⽹络问题 检查⽹络连接
+配对失败 openclaw pairing
+消息⽆法送达 检查 allowlist
+模型问题
+检查项 解决⽅案
+API 密钥错误 检查 API 密钥有效性
+额度⽤尽 检查使⽤量或升级
+超时 增加超时时间
+模型不可⽤ 切换到其他模型
+⼯具问题
+检查项 解决⽅案
+权限不⾜ 检查 tools 配置
+沙箱阻⽌ 禁⽤沙箱或添加⽩名单
+命令失败 检查命令语法
+--- Page 2/2 ---
+会话问题
+检查项 解决⽅案
+会话丢失 重启 Gateway
+历史过⻓ 清理会话历史
+内存泄漏 重启服务
+⽇志命令
+# 查看错误⽇志
+tail -f ~/.openclaw/logs/error.log
+# 查看⽹关⽇志
+tail -f ~/.openclaw/logs/gateway.log
+# 查看代理⽇志
+tail -f ~/.openclaw/logs/agent.log
+
+================================================================================
+FILE: openclaw-20-安全配置检查清单.pdf
+================================================================================
+--- Page 1/2 ---
+OpenClaw 安全配置检查清单
+安全配置检查要点
+基本安全
+已启⽤配对机制
+配对码复杂度⾜够
+配对码定期更新
+访问控制
+已配置 allowlist
+allowlist 仅包含必要⽤户
+⽆未授权访问记录
+⼯具权限
+⼯具配置⽂件适当
+已禁⽤危险⼯具（如 exec）
+沙箱模式已启⽤（如需要）
+API 密钥
+API 密钥已安全存储
+未在代码中硬编码密钥
+密钥权限设置正确
+数据保护
+已启⽤定期备份
+敏感数据已加密
+备份存储位置安全
+⽹络安全
+Gateway 仅绑定 localhost（除⾮需要外部访问）
+已配置防⽕墙规则
+HTTPS 已启⽤（如需要）
+⽇志审计
+已启⽤⽇志记录
+⽇志包含必要信息
+--- Page 2/2 ---
+⽇志定期归档
+更新维护
+定期更新依赖
+关注安全公告
+测试安全配置
+检查命令
+# 验证配置
+openclaw doctor
+# 查看配对状态
+openclaw pairing
+# 检查安全⽇志
+cat ~/.openclaw/logs/security.log
+
+================================================================================
+FILE: openclaw-16-配置模板速查表.pdf
+================================================================================
+--- Page 1/3 ---
+OpenClaw 配置模板速查表
+常⽤配置模板快速复制
+最⼩配置
+{
+agents: {
+defaults: {
+model: { primary: "anthropic/claude-sonnet-4-6" }
+}
+},
+channels: {
+telegram: {
+enabled: true,
+botToken: "YOUR_TOKEN"
+}
+}
+}
+Telegram 配置
+{
+channels: {
+telegram: {
+enabled: true,
+botToken: "123456789:ABCdef...",
+polling: { enabled: true }
+}
+}
+}
+安全配置
+{
+gateway: {
+pairing: { enabled: true, code: "YOUR_CODE" }
+},
+security: {
+allowlist: ["telegram:YOUR_CHAT_ID"]
+},
+tools: {
+--- Page 2/3 ---
+profile: "coding",
+deny: ["exec"]
+}
+}
+多渠道配置
+{
+channels: {
+telegram: {
+enabled: true,
+botToken: "TELEGRAM_TOKEN"
+},
+discord: {
+enabled: true,
+botToken: "DISCORD_TOKEN",
+applicationId: "APP_ID"
+},
+webchat: {
+enabled: true
+}
+}
+}
+本地模型配置
+{
+providers: {
+ollama: {
+baseUrl: "http://localhost:11434"
+}
+},
+agents: {
+defaults: {
+model: { primary: "ollama/llama3.2" }
+}
+}
+}
+Cron 配置
+--- Page 3/3 ---
+{
+cron: {
+enabled: true,
+jobs: [
+{
+id: "morning-reminder",
+schedule: "0 9 * * *",
+command: "echo 'Good morning!'",
+sessionTarget: "main"
+}
+]
+}
+}
+Docker Compose
+version: '3'
+services:
+openclaw:
+image: openclaw/openclaw:latest
+ports:
+- "18789:18789"
+volumes:
+- ./config:/root/.openclaw
+environment:
+- ANTHROPIC_API_KEY=sk-ant-xxx
+环境变量
+# .env ⽂件
+ANTHROPIC_API_KEY=sk-ant-xxx
+OPENAI_API_KEY=sk-xxx
+GOOGLE_API_KEY=AIza-xxx
+OPENCLAW_GATEWAY_PORT=18789
+
+================================================================================
+FILE: openclaw-17-Slash命令速查表.pdf
+================================================================================
+--- Page 1/3 ---
+OpenClaw Slash 命令速查表
+所有斜杠命令快速查询
+系统命令
+命令 说明
+/help 显示帮助信息
+/status 显示当前状态
+/version 显示版本号
+/reset 重置会话
+会话管理
+命令 说明
+/sessions 列出会话
+/switch <id> 切换会话
+/kill <id> 结束会话
+模型控制
+命令 说明
+/model 显示当前模型
+/model <name> 切换模型
+/models 列出可⽤模型
+Agent 管理
+命令 说明
+/agent 显示当前 Agent
+/agent <id> 切换 Agent
+/agents 列出所有 Agent
+--- Page 2/3 ---
+⼯具管理
+命令 说明
+/tools 列出可⽤⼯具
+/allow <tool> 允许⼯具
+/deny <tool> 拒绝⼯具
+记忆管理
+命令 说明
+/memory 查看记忆
+/remember <text> 记住内容
+/forget 清除记忆
+配置管理
+命令 说明
+/config 查看配置
+/set <key> <value> 设置配置
+/get <key> 获取配置
+调试命令
+命令 说明
+/debug on 开启调试
+/debug off 关闭调试
+/logs 查看⽇志
+/doctor 系统诊断
+其他命令
+命令 说明
+/pair 显示配对码
+--- Page 3/3 ---
+/qr 显示⼆维码
+/backup 创建备份
+/restore 恢复备份

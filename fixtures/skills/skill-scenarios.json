@@ -1,0 +1,791 @@
+{
+  "project": "AIMS",
+  "version": 1,
+  "generatedAt": "2026-04-21",
+  "scenarios": [
+    {
+      "id": "skills-manager-office-scene-routing",
+      "skill": "skills-manager",
+      "domain": "main",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "办公场景技能总管路由",
+      "description": "根据当前页业务上下文给出主技能、辅助技能、更新建议和安装建议。",
+      "input": {
+        "channel": "feishu",
+        "group": "飞书办公自动化群",
+        "currentPage": "周报生成页",
+        "businessGoal": "把周报、Excel 图表和邮件草稿串起来",
+        "availableSkills": [
+          "doc-auto",
+          "email-mgr",
+          "data-analyst-pro",
+          "skill-vetter",
+          "self-improvement"
+        ],
+        "marketCandidates": [
+          "feishu-doc",
+          "task-status"
+        ]
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "currentPage",
+          "primarySkill",
+          "supportSkills",
+          "update",
+          "install",
+          "manualReview"
+        ],
+        "skillMustMention": [
+          "当前页",
+          "技能市场",
+          "人工确认"
+        ],
+        "outputMode": "json",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "listing-gen-amazon-camping-lamp",
+      "skill": "listing-gen",
+      "domain": "ecommerce",
+      "riskLevel": "medium",
+      "requiresKnowledge": true,
+      "title": "Amazon 露营灯 Listing 生成",
+      "description": "为美国站露营灯生成合规 Listing 草稿。",
+      "input": {
+        "platform": "amazon",
+        "site": "US",
+        "category": "Camping Lanterns",
+        "language": "en-US",
+        "productTitle": "Rechargeable Camping Lantern",
+        "sellingPoints": [
+          "10000mAh 电池",
+          "IPX5 防水",
+          "支持应急照明和露营场景"
+        ],
+        "bannedTerms": [
+          "best",
+          "100% waterproof"
+        ]
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "title",
+          "bulletPoints",
+          "searchKeywords",
+          "description",
+          "compliance",
+          "handoff"
+        ],
+        "skillMustMention": [
+          "检索",
+          "合规",
+          "人工复核"
+        ],
+        "outputMode": "json",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "ad-optimizer-amazon-auto-campaign",
+      "skill": "ad-optimizer",
+      "domain": "ecommerce",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "自动广告活动调价建议",
+      "description": "针对高 ACOS 的 Amazon 自动广告活动输出调价和预算建议。",
+      "input": {
+        "platform": "amazon",
+        "store": "aims-us-store",
+        "campaignType": "auto",
+        "dateRange": "2026-04-01 to 2026-04-20",
+        "metrics": {
+          "acos": 0.43,
+          "ctr": 0.012,
+          "cvr": 0.041,
+          "roas": 2.34
+        },
+        "targetAcos": 0.28
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "问题活动列表",
+          "关键指标解读",
+          "调价建议",
+          "预算建议",
+          "关键词优化建议",
+          "人工确认项"
+        ],
+        "skillMustMention": [
+          "ACOS",
+          "预算",
+          "人工确认"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "review-mgr-negative-fragile-item",
+      "skill": "review-mgr",
+      "domain": "ecommerce",
+      "riskLevel": "high",
+      "requiresKnowledge": true,
+      "title": "差评分析与回复草拟",
+      "description": "针对破损差评做情感识别、风险分级和回复建议。",
+      "input": {
+        "platform": "taobao",
+        "product": "玻璃冷泡壶",
+        "rating": 1,
+        "comment": "收到已经裂了，客服还回复很慢，不敢再买。",
+        "orderId": "TB202604180091",
+        "afterSaleHistory": "用户未发起退款"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "情感分类",
+          "问题类型",
+          "风险等级",
+          "处理建议",
+          "回复草稿",
+          "是否需要人工介入"
+        ],
+        "skillMustMention": [
+          "情感",
+          "检索",
+          "人工"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "material-gen-xhs-summer-fan",
+      "skill": "material-gen",
+      "domain": "ecommerce",
+      "riskLevel": "medium",
+      "requiresKnowledge": true,
+      "title": "多平台夏季风扇素材 brief",
+      "description": "为电商和社媒同时准备夏季便携风扇图文素材简报。",
+      "input": {
+        "productName": "手持便携小风扇",
+        "sellingPoints": [
+          "100 档风力",
+          "可折叠支架",
+          "通勤便携"
+        ],
+        "audience": "办公室女性用户",
+        "platform": [
+          "taobao",
+          "xiaohongshu",
+          "douyin"
+        ],
+        "assetType": "图文主图+短视频封面"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "素材目标",
+          "平台版本",
+          "主文案",
+          "画面/镜头说明",
+          "CTA",
+          "风险提示"
+        ],
+        "skillMustMention": [
+          "平台",
+          "合规",
+          "人工确认"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "xhs-seed-night-skin-care-note",
+      "skill": "xhs-seed",
+      "domain": "social-media",
+      "riskLevel": "medium",
+      "requiresKnowledge": true,
+      "title": "晚间护肤场景种草笔记",
+      "description": "为护肤产品生成小红书场景化种草笔记。",
+      "input": {
+        "productName": "神经酰胺面霜",
+        "targetAudience": "熬夜肌学生党",
+        "sellingPoints": [
+          "轻润不闷",
+          "夜间修护",
+          "适合换季"
+        ],
+        "noteType": "场景笔记",
+        "wordCount": 900
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "标题候选",
+          "开头钩子",
+          "正文结构",
+          "互动收尾",
+          "合规风险提示"
+        ],
+        "skillMustMention": [
+          "检索",
+          "硬广",
+          "人工复核"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "douyin-ops-blender-script",
+      "skill": "douyin-ops",
+      "domain": "social-media",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "便携榨汁杯抖音脚本",
+      "description": "输出带货短视频的 3 秒钩子、分镜、台词和发布时间建议。",
+      "input": {
+        "productName": "便携榨汁杯",
+        "sellingPoints": [
+          "一键清洗",
+          "上班通勤可带",
+          "USB 充电"
+        ],
+        "durationSeconds": 35,
+        "targetAudience": "健身和通勤人群",
+        "goalAction": "直播间点击"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "视频主题",
+          "3 秒钩子",
+          "分镜脚本",
+          "台词/字幕",
+          "画面说明",
+          "发布时间建议"
+        ],
+        "skillMustMention": [
+          "3 秒钩子",
+          "分镜",
+          "人工确认"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "video-channel-community-cleaner",
+      "skill": "video-channel",
+      "domain": "social-media",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "社交裂变型视频号内容",
+      "description": "围绕家庭清洁产品生成适配视频号关系链传播的脚本。",
+      "input": {
+        "topic": "厨房去油污清洁喷雾",
+        "audience": "家庭主理人",
+        "durationSeconds": 45,
+        "scene": "周末家务分享",
+        "goalAction": "转发给家人"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "标题",
+          "开场钩子",
+          "正文/脚本结构",
+          "社交互动点",
+          "分发建议",
+          "风险提示"
+        ],
+        "skillMustMention": [
+          "分发建议",
+          "风险",
+          "人工确认"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "opinion-watch-negative-topic-alert",
+      "skill": "opinion-watch",
+      "domain": "social-media",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "负面舆情巡检告警",
+      "description": "针对品牌售后争议话题输出舆情摘要和升级建议。",
+      "input": {
+        "platform": "xiaohongshu",
+        "timeRange": "2026-04-21 08:00-10:00",
+        "topics": [
+          "爆痘",
+          "退款慢",
+          "客服不回"
+        ],
+        "samplePosts": [
+          "用了两天爆痘，客服也不处理。",
+          "评论区很多人在问退款，感觉情况不妙。"
+        ]
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "舆情主题",
+          "情绪分类",
+          "风险等级",
+          "告警摘要",
+          "升级建议",
+          "建议回复口径"
+        ],
+        "skillMustMention": [
+          "风险等级",
+          "告警",
+          "转人工"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "cross-drain-social-to-private-domain",
+      "skill": "cross-drain",
+      "domain": "social-media",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "社媒评论区轻导流话术",
+      "description": "从小红书评论区生成轻导流到企业微信社群的话术版本。",
+      "input": {
+        "sourcePlatform": "xiaohongshu",
+        "targetPlatform": "wework",
+        "scene": "评论区用户追问具体活动细节",
+        "goalAction": "引导私聊领取活动清单",
+        "brandTone": "克制、专业"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "使用场景",
+          "话术版本 A/B/C",
+          "风格说明",
+          "合规风险提示"
+        ],
+        "skillMustMention": [
+          "合规",
+          "话术",
+          "人工复核"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "order-query-customer-service-check",
+      "skill": "order-query",
+      "domain": "cs",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "客服订单核验",
+      "description": "根据订单号返回客服可直接复用的订单摘要。",
+      "input": {
+        "orderNo": "JD2026042100123",
+        "platform": "jd",
+        "customerId": "u-1024",
+        "needSummary": true
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "订单号",
+          "平台",
+          "商品名称",
+          "金额",
+          "当前状态",
+          "创建时间",
+          "客服回复建议"
+        ],
+        "skillMustMention": [
+          "mysql-mcp",
+          "隐私",
+          "人工复核"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "logistics-track-delay-investigation",
+      "skill": "logistics-track",
+      "domain": "cs",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "异常物流节点排查",
+      "description": "针对长时间未更新的运单输出异常判断和客服解释建议。",
+      "input": {
+        "trackingNo": "SF1234567890",
+        "platform": "taobao",
+        "carrier": "顺丰",
+        "queryRange": "last 10 days"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "单号",
+          "物流公司",
+          "当前状态",
+          "最新节点",
+          "异常判断",
+          "客服回复建议"
+        ],
+        "skillMustMention": [
+          "物流",
+          "异常",
+          "转人工"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "after-sale-refund-gate",
+      "skill": "after-sale",
+      "domain": "cs",
+      "riskLevel": "high",
+      "requiresKnowledge": true,
+      "title": "退款类售后门控",
+      "description": "针对破损退款诉求生成处理建议并保留人工确认。",
+      "input": {
+        "afterSaleType": "refund",
+        "orderNo": "TB202604190077",
+        "platform": "taobao",
+        "issue": "杯身破裂",
+        "signedStatus": "signed",
+        "evidence": "照片已上传"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "售后类型",
+          "建议动作",
+          "回复话术",
+          "风险点",
+          "是否需要人工确认"
+        ],
+        "skillMustMention": [
+          "售后知识库",
+          "平台售后规则",
+          "人工确认"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "email-mgr-quotation-approval",
+      "skill": "email-mgr",
+      "domain": "office",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "报价邮件审批门控",
+      "description": "对外报价邮件只起草不发送，并给出审批建议。",
+      "input": {
+        "subject": "关于新品批量采购报价",
+        "body": "客户需要 500 件夏季风扇，询问本周报价和交期。",
+        "senderRole": "potential distributor",
+        "replyGoal": "先给出意向回复，不直接发正式报价",
+        "allowDraftOnly": true
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "邮件分类",
+          "优先级",
+          "待办事项",
+          "回复草稿",
+          "是否允许直接发送",
+          "审批建议"
+        ],
+        "skillMustMention": [
+          "审批",
+          "不自动发送",
+          "人工确认"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "doc-auto-proposal-summary",
+      "skill": "doc-auto",
+      "domain": "office",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "方案文档整理与摘要",
+      "description": "把原始方案材料整理成结构化实施说明。",
+      "input": {
+        "documentType": "project proposal",
+        "sourceMaterial": "AI营销系统项目方案(OpenClaw版)V2.md",
+        "targetFormat": "结构化实施方案",
+        "preserveBoundary": "保留原有目标、范围、阶段信息"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "文档类型",
+          "核心摘要",
+          "结构化正文",
+          "待补充信息",
+          "风险提示"
+        ],
+        "skillMustMention": [
+          "摘要",
+          "结构化",
+          "人工复核"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "agent-orchestrator-cross-domain-routing",
+      "skill": "agent-orchestrator",
+      "domain": "main",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "跨域业务请求路由编排",
+      "description": "当用户同时提到经营报表和视频号分发时，验证总控编排器具备跨域路由与多技能规划意识。",
+      "input": {
+        "message": "帮我先整理一份本周经营报表，再给我一版适合视频号发布的内容摘要。",
+        "channel": "feishu",
+        "context": {
+          "user_id": "ops-001",
+          "current_agent": "main"
+        }
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "感知模块",
+          "决策模块",
+          "执行模块",
+          "Agent路由"
+        ],
+        "skillMustMention": [
+          "感知",
+          "决策",
+          "执行"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": false
+      }
+    },
+    {
+      "id": "report-gen-weekly-ops-dashboard",
+      "skill": "report-gen",
+      "domain": "office",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "周经营报表生成",
+      "description": "按周维度汇总订单、营收和客服指标，输出运营复盘底稿。",
+      "input": {
+        "report_type": "weekly",
+        "date": "2026-04-28",
+        "platform": "all"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "报表标题",
+          "生成时间",
+          "数据摘要",
+          "业务洞察",
+          "优化建议"
+        ],
+        "skillMustMention": [
+          "业务洞察",
+          "优化建议",
+          "人工审核"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "excel-viz-sales-trend-board",
+      "skill": "excel-viz",
+      "domain": "office",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "销售趋势图表生成",
+      "description": "将销售数据转换为 Excel 图表配置和统计摘要。",
+      "input": {
+        "data": [
+          {"name": "周一", "value": 128},
+          {"name": "周二", "value": 156},
+          {"name": "周三", "value": 143}
+        ],
+        "chart_type": "line",
+        "title": "本周销量趋势",
+        "operation": "avg"
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "chart_spec",
+          "statistics",
+          "excel_formula",
+          "table_html",
+          "suggestions"
+        ],
+        "skillMustMention": [
+          "图表",
+          "统计",
+          "HTML 表格"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": false
+      }
+    },
+    {
+      "id": "intent-recognition-presales-routing",
+      "skill": "intent-recognition",
+      "domain": "cs",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "售前咨询意图识别",
+      "description": "识别带价格、规格和库存问题的售前咨询，并给出下一步建议。",
+      "input": {
+        "user_message": "这款蓝牙耳机多少钱？现在有货吗？参数和续航能发我看看吗？",
+        "history": [
+          {"role": "user", "content": "想买一款送朋友的耳机"}
+        ],
+        "context": {
+          "channel": "wework"
+        }
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "intent",
+          "intent_label",
+          "confidence",
+          "entities",
+          "suggestions",
+          "response_template"
+        ],
+        "skillMustMention": [
+          "订单查询",
+          "物流跟踪",
+          "转人工处理"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": false
+      }
+    },
+    {
+      "id": "sentiment-analysis-vip-escalation",
+      "skill": "sentiment-analysis",
+      "domain": "cs",
+      "riskLevel": "high",
+      "requiresKnowledge": false,
+      "title": "VIP 客户负面情绪升级",
+      "description": "识别高价值 VIP 用户的愤怒情绪，并触发转人工建议。",
+      "input": {
+        "user_message": "我要投诉，你们这处理也太慢了，我非常不满，赶紧给我退款。",
+        "history": [
+          {"role": "user", "content": "昨天就说会处理，到现在还没消息", "sentiment": "negative"},
+          {"role": "assistant", "content": "我们正在核实中", "sentiment": "neutral"}
+        ],
+        "context": {
+          "customer_tier": "VIP",
+          "order_value": 6899
+        }
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "sentiment",
+          "sentiment_score",
+          "intensity",
+          "require_human",
+          "priority_level",
+          "suggested_response"
+        ],
+        "skillMustMention": [
+          "转人工",
+          "负面情绪",
+          "VIP客户"
+        ],
+        "outputMode": "list",
+        "manualGateRequired": true
+      }
+    },
+    {
+      "id": "skill-orchestrator-office-productivity-suite",
+      "skill": "skill-orchestrator",
+      "domain": "office",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "办公自动化闭环工作流",
+      "description": "执行报表、图表、文档和邮件串联的办公闭环。",
+      "input": {
+        "action": "execute_workflow",
+        "workflow_name": "office_productivity_suite",
+        "params": {
+          "report_type": "weekly",
+          "date": "2026-04-28",
+          "platform": "all"
+        },
+        "context": {
+          "user_id": "office-ops-001",
+          "channel": "feishu"
+        }
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "workflow_name",
+          "completed_steps",
+          "step_details",
+          "aggregated_result",
+          "office_productivity_report"
+        ],
+        "skillMustMention": [
+          "step_details",
+          "aggregated_result",
+          "handoff"
+        ],
+        "outputMode": "json",
+        "manualGateRequired": false
+      }
+    },
+    {
+      "id": "skill-orchestrator-social-flywheel",
+      "skill": "skill-orchestrator",
+      "domain": "social-media",
+      "riskLevel": "medium",
+      "requiresKnowledge": false,
+      "title": "社媒内容增长闭环工作流",
+      "description": "执行小红书、抖音、视频号、导流和舆情巡检的社媒闭环。",
+      "input": {
+        "action": "execute_workflow",
+        "workflow_name": "social_media_content_flywheel",
+        "params": {
+          "product_name": "厨房去油污清洁喷雾",
+          "selling_points": ["去油快", "不刺鼻", "厨房台面可用"],
+          "audience": "家庭主理人",
+          "sourcePlatform": "xiaohongshu",
+          "targetPlatform": "video-channel"
+        },
+        "context": {
+          "user_id": "social-ops-001",
+          "channel": "feishu"
+        }
+      },
+      "validation": {
+        "requiredOutputKeywords": [
+          "workflow_name",
+          "completed_steps",
+          "aggregated_result",
+          "social_media_flywheel_report",
+          "handoff"
+        ],
+        "skillMustMention": [
+          "xhs",
+          "cross_drain",
+          "opinion"
+        ],
+        "outputMode": "json",
+        "manualGateRequired": true
+      }
+    }
+  ]
+}

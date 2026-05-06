@@ -1,0 +1,168 @@
+{{- if .Values.openclaw.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aims.fullname" . }}-openclaw
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: openclaw
+spec:
+  {{- if not .Values.openclaw.autoscaling.enabled }}
+  replicas: {{ .Values.openclaw.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "aims.selectorLabels" . | nindent 6 }}
+      app: openclaw
+  template:
+    metadata:
+      labels:
+        {{- include "aims.selectorLabels" . | nindent 8 }}
+        app: openclaw
+    spec:
+      containers:
+      - name: openclaw
+        image: "{{ .Values.openclaw.image.repository }}:{{ .Values.openclaw.image.tag }}"
+        imagePullPolicy: {{ .Values.openclaw.image.pullPolicy }}
+        ports:
+        - containerPort: 18789
+          name: gateway
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: OPENAI_API_KEY
+        - name: DEEPSEEK_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: DEEPSEEK_API_KEY
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: GEMINI_API_KEY
+        - name: MOONSHOT_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: MOONSHOT_API_KEY
+        - name: ZHIPU_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: ZHIPU_API_KEY
+        - name: LLM_PRIMARY_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "aims.fullname" . }}-config
+              key: LLM_PRIMARY_MODEL
+        - name: LLM_MULTIMODAL_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "aims.fullname" . }}-config
+              key: LLM_MULTIMODAL_MODEL
+        - name: LLM_RERANK_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "aims.fullname" . }}-config
+              key: LLM_RERANK_MODEL
+        - name: AIMS_GATEWAY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: AIMS_GATEWAY_TOKEN
+        - name: MYSQL_HOST
+          value: "{{ include "aims.fullname" . }}-mysql"
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "aims.fullname" . }}-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "aims.fullname" . }}-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "aims.fullname" . }}-secrets
+              key: MYSQL_PASSWORD
+        - name: REDIS_HOST
+          value: "{{ include "aims.fullname" . }}-redis"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: MILVUS_HOST
+          value: "{{ include "aims.fullname" . }}-milvus"
+        - name: MILVUS_PORT
+          value: "19530"
+        - name: QDRANT_HOST
+          value: "{{ include "aims.fullname" . }}-qdrant"
+        - name: QDRANT_PORT
+          value: "6333"
+        volumeMounts:
+        - name: config
+          mountPath: /root/.openclaw/openclaw.json
+          subPath: openclaw.json
+        - name: config
+          mountPath: /root/.openclaw/SOUL.md
+          subPath: SOUL.md
+        - name: config
+          mountPath: /root/.openclaw/AGENTS.md
+          subPath: AGENTS.md
+        - name: config
+          mountPath: /root/.openclaw/mcporter.json
+          subPath: mcporter.json
+        - name: workspace
+          mountPath: /root/.openclaw/workspace
+        - name: workspace-main
+          mountPath: /root/.openclaw/workspace-main
+        - name: workspace-ecommerce
+          mountPath: /root/.openclaw/workspace-ecommerce
+        - name: workspace-social
+          mountPath: /root/.openclaw/workspace-social
+        - name: workspace-cs
+          mountPath: /root/.openclaw/workspace-cs
+        - name: workspace-office
+          mountPath: /root/.openclaw/workspace-office
+        - name: skills
+          mountPath: /root/.openclaw/skills
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 18789
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 18789
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.openclaw.resources | nindent 10 }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "aims.fullname" . }}-openclaw-config
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: {{ include "aims.fullname" . }}-workspace-pvc
+      - name: workspace-main
+        emptyDir: {}
+      - name: workspace-ecommerce
+        emptyDir: {}
+      - name: workspace-social
+        emptyDir: {}
+      - name: workspace-cs
+        emptyDir: {}
+      - name: workspace-office
+        emptyDir: {}
+      - name: skills
+        emptyDir: {}
+{{- end }}

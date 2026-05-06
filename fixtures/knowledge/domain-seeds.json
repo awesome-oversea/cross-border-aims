@@ -1,0 +1,150 @@
+{
+  "project": "AIMS",
+  "version": 1,
+  "records": [
+    {
+      "id": "ecom-rule-amazon-title-baseline",
+      "collection": "ecom_rules",
+      "priority": "high",
+      "tags": ["amazon", "listing", "compliance"],
+      "title": "Amazon Listing 标题合规基线",
+      "text": "模拟环境基线：Amazon US 标题优先保留品牌、核心关键词、型号、数量或尺寸。禁止绝对化承诺、重复堆词、与类目无关的促销口号。生成前需要二次检查站点语言、字符长度、禁用词和类目要求。"
+    },
+    {
+      "id": "ecom-rule-ad-optimization-guardrail",
+      "collection": "ecom_rules",
+      "priority": "high",
+      "tags": ["ads", "acos", "roas"],
+      "title": "电商广告调优护栏",
+      "text": "广告调优先看 ACOS、CTR、CVR、ROAS 四项指标，输出必须包含问题诊断、预算建议、调价建议、人工复核点。高风险动作如大幅提价、暂停主力词、修改品牌词投放策略，需要人工确认后执行。"
+    },
+    {
+      "id": "ecom-rule-review-response",
+      "collection": "ecom_rules",
+      "priority": "medium",
+      "tags": ["review", "service", "risk"],
+      "title": "差评回复规则",
+      "text": "差评回复先识别问题类型，再给出安抚、补偿、售后承接三段式回复。涉及破损、虚假宣传、平台处罚、赔付承诺等敏感场景时，只能生成草稿并提示人工介入，不得直接自动发送。"
+    },
+    {
+      "id": "product-camping-lantern-profile",
+      "collection": "products",
+      "priority": "high",
+      "tags": ["camping", "lantern", "sku"],
+      "title": "Rechargeable Camping Lantern 产品档案",
+      "text": "产品代号 AIMS-CL01。核心卖点：10000mAh 电池、IPX5 防水、支持应急照明和露营场景。目标用户：北美户外露营人群。常见问答：是否可为手机充电、满电续航多久、是否支持多档亮度。"
+    },
+    {
+      "id": "product-glass-pitcher-profile",
+      "collection": "products",
+      "priority": "medium",
+      "tags": ["kitchen", "glass", "fragile"],
+      "title": "玻璃冷泡壶 产品档案",
+      "text": "产品代号 AIMS-GP02。核心卖点：高硼硅玻璃、过滤茶叶分离、适合冷泡茶和果饮。高风险属性：易碎、运输破损率高。详情页与客服回复需要强调包装升级、签收检查和破损补发流程。"
+    },
+    {
+      "id": "product-portable-blender-profile",
+      "collection": "products",
+      "priority": "medium",
+      "tags": ["blender", "portable", "ugc"],
+      "title": "便携榨汁杯 产品档案",
+      "text": "产品代号 AIMS-PB03。核心卖点：Type-C 充电、轻量便携、适合办公室与健身场景。内容产出重点：突出便携、清洗效率、颜值和通勤场景。用户敏感点：刀头安全、充电时长、禁止空转。"
+    },
+    {
+      "id": "after-sale-damaged-item-policy",
+      "collection": "after_sales",
+      "priority": "high",
+      "tags": ["refund", "damage", "policy"],
+      "title": "破损件售后处理规则",
+      "text": "用户反馈商品破损时，客服先确认签收时间、外箱状态、商品受损照片和订单号。可直接走补发或退款的场景需要记录证据链；涉及高客诉订单、批量破损或平台纠纷升级时，必须转人工复核。"
+    },
+    {
+      "id": "after-sale-logistics-sla",
+      "collection": "after_sales",
+      "priority": "medium",
+      "tags": ["logistics", "sla", "tracking"],
+      "title": "物流跟踪 SLA 基线",
+      "text": "物流异常处理遵循三步：先查轨迹，再判断是否超出承诺时效，最后给出补救方案。国内订单 48 小时无更新、跨境订单 96 小时无更新、签收异常或拒收场景，都需要在回复中包含人工跟进承诺。"
+    },
+    {
+      "id": "after-sale-faq-template",
+      "collection": "after_sales",
+      "priority": "medium",
+      "tags": ["faq", "support", "cs"],
+      "title": "售后 FAQ 模板",
+      "text": "标准售后 FAQ 至少覆盖退款时效、换货流程、地址修改、发票、缺件、物流催单六类问题。回答需包含时效、所需材料、可自助操作的入口，以及何时升级至人工客服。"
+    },
+    {
+      "id": "social-rule-xiaohongshu-note",
+      "collection": "social_rules",
+      "priority": "high",
+      "tags": ["xiaohongshu", "content", "compliance"],
+      "title": "小红书种草内容规则",
+      "text": "小红书笔记优先真实体验和场景化表达，避免硬广堆砌、绝对化承诺、引流暗号和明显违规词。内容结构建议为痛点引入、体验过程、结果反馈、互动问题。需要预留人工审核禁忌词和封面文案。"
+    },
+    {
+      "id": "social-rule-douyin-short-video",
+      "collection": "social_rules",
+      "priority": "high",
+      "tags": ["douyin", "video", "hook"],
+      "title": "抖音短视频运营规则",
+      "text": "抖音脚本需在前三秒给出明确钩子，镜头切换和字幕节奏要匹配。涉及功效、价格对比、赠品承诺、达人背书时要做合规校验。输出结果要标注封面文案、口播、镜头建议和风险提示。"
+    },
+    {
+      "id": "social-rule-video-channel",
+      "collection": "social_rules",
+      "priority": "medium",
+      "tags": ["wechat", "video-channel", "private-traffic"],
+      "title": "视频号内容发布基线",
+      "text": "视频号内容更强调可信表达、用户关系和私域承接。发布前应检查标题是否过于营销、评论引导是否过界、是否存在违规导流。适合输出直播预告、产品体验、社群互动和活动回顾类内容。"
+    },
+    {
+      "id": "script-presale-consultation",
+      "collection": "scripts",
+      "priority": "high",
+      "tags": ["script", "presale", "customer-service"],
+      "title": "售前咨询标准话术",
+      "text": "售前话术结构建议为：快速确认需求、给出一条主推荐理由、补充场景化差异点、提醒库存或发货时效、最后给出轻量行动建议。禁止机械复读参数表，禁止在缺乏依据时承诺最低价或绝对效果。"
+    },
+    {
+      "id": "script-negative-review-recovery",
+      "collection": "scripts",
+      "priority": "medium",
+      "tags": ["review", "recovery", "crm"],
+      "title": "差评挽回回复模板",
+      "text": "负面评价回复先道歉，再复述问题，再说明补救动作，最后引导私信或订单通道继续处理。若用户情绪强烈或涉及平台处罚、维权、赔偿，模板只能作为草稿，不得自动直发。"
+    },
+    {
+      "id": "script-office-followup-email",
+      "collection": "scripts",
+      "priority": "medium",
+      "tags": ["office", "email", "follow-up"],
+      "title": "办公自动化跟进邮件模板",
+      "text": "邮件模板需包含背景、行动项、责任人、截止时间和附件说明。适用于周报催交、素材确认、活动复盘追踪。语气保持专业、简洁、可执行，避免模糊表述。"
+    },
+    {
+      "id": "industry-campaign-planning-checklist",
+      "collection": "industry",
+      "priority": "medium",
+      "tags": ["campaign", "planning", "growth"],
+      "title": "营销活动策划检查清单",
+      "text": "策划活动时先定义目标指标，再拆解渠道、素材、节奏和预算。至少同步一份转化漏斗假设、一组 A/B 测试点和一份风险回滚方案。活动复盘要回收投放数据、素材表现和用户反馈。"
+    },
+    {
+      "id": "industry-competitive-analysis",
+      "collection": "industry",
+      "priority": "medium",
+      "tags": ["competitive", "benchmark", "analysis"],
+      "title": "竞品分析工作法",
+      "text": "竞品分析建议从价格带、卖点表达、内容风格、评论反馈、投放节奏五个维度建立对照。输出应明确哪些做法可借鉴、哪些是类目特殊因素、哪些需要小流量验证后再复制。"
+    },
+    {
+      "id": "industry-funnel-metrics",
+      "collection": "industry",
+      "priority": "low",
+      "tags": ["funnel", "metrics", "ops"],
+      "title": "营销漏斗指标基线",
+      "text": "AIMS 模拟环境建议跟踪曝光、点击、加购、咨询、成交、复购六段指标，并按渠道、素材、SKU、活动维度拆分。RAG 与自动化能力的价值应体现在命中率、响应时长、人工节省和转化提升上。"
+    }
+  ]
+}

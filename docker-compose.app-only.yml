@@ -1,0 +1,40 @@
+services:
+  openclaw:
+    image: ${AIMS_OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    container_name: aims-openclaw-app
+    restart: unless-stopped
+    ports:
+      - "${AIMS_GATEWAY_PORT:-18789}:18789"
+    volumes:
+      - ${AIMS_OPENCLAW_CONFIG_PATH:-./.generated/openclaw.runtime.json}:/root/.openclaw/openclaw.json:ro
+      - ./SOUL.md:/root/.openclaw/SOUL.md:ro
+      - ./AGENTS.md:/root/.openclaw/AGENTS.md:ro
+      - ./workspace:/root/.openclaw/workspace
+      - ./workspace-main:/root/.openclaw/workspace-main
+      - ./workspace-ecommerce:/root/.openclaw/workspace-ecommerce
+      - ./workspace-social:/root/.openclaw/workspace-social
+      - ./workspace-cs:/root/.openclaw/workspace-cs
+      - ./workspace-office:/root/.openclaw/workspace-office
+      - ./skills:/root/.openclaw/skills
+      - ./mcporter.json:/root/.openclaw/mcporter.json:ro
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      ZHIPU_API_KEY: ${ZHIPU_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-ollama-local}
+      LLM_PRIMARY_MODEL: ${LLM_PRIMARY_MODEL:-qwen2.5:1.5b-instruct}
+      LLM_VLLM_ENDPOINT: ${LLM_VLLM_ENDPOINT:-http://127.0.0.1:8000/v1}
+      LLM_TRITON_ENDPOINT: ${LLM_TRITON_ENDPOINT:-http://127.0.0.1:8000}
+      LLM_OLLAMA_ENDPOINT: ${AIMS_DOCKER_OLLAMA_ENDPOINT:-http://ollama-shared:11434}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AIMS_GATEWAY_TOKEN: ${AIMS_GATEWAY_TOKEN:-replace-me}
+    networks:
+      default:
+        aliases:
+          - aims-openclaw
+
+networks:
+  default:
+    external: true
+    name: shared-runtime-network

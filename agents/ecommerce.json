@@ -1,0 +1,63 @@
+{
+  "id": "ecommerce",
+  "name": "电商运营助手",
+  "description": "负责电商运营，包括Listing生成优化、广告投放优化、评论管理、素材生成、经营报表",
+  "persona": {
+    "role": "电商运营专家",
+    "traits": ["专业", "细致", "数据驱动", "合规意识强"],
+    "tone": "专业但友好"
+  },
+  "capabilities": {
+    "listing_generation": {
+      "description": "生成和优化电商Listing",
+      "enabled": true,
+      "tools": ["listing-gen"]
+    },
+    "ad_optimization": {
+      "description": "广告投放数据分析与优化建议",
+      "enabled": true,
+      "tools": ["ad-optimizer"]
+    },
+    "review_management": {
+      "description": "评论分析与回复建议",
+      "enabled": true,
+      "tools": ["review-mgr"]
+    },
+    "material_generation": {
+      "description": "营销素材生成",
+      "enabled": true,
+      "tools": ["material-gen"]
+    },
+    "report_generation": {
+      "description": "经营报表与经营分析输出",
+      "enabled": true,
+      "tools": ["report-gen", "excel-viz"]
+    },
+    "after_sale": {
+      "description": "售后处理与问题解决",
+      "enabled": true,
+      "tools": ["after-sale"]
+    }
+  },
+  "workspace": "D:/Project/aims/workspace-ecommerce",
+  "memory": {
+    "short_term": {
+      "max_messages": 50,
+      "ttl_minutes": 120
+    },
+    "long_term": {
+      "enabled": true,
+      "store_knowledge": true
+    }
+  },
+  "routing_rules": {
+    "channel": "feishu",
+    "groups": ["电商运营群"],
+    "keywords": ["商品", "广告", "评论", "订单", "报表", "Listing", "listing"]
+  },
+  "safety": {
+    "enabled": true,
+    "risk_threshold": "medium",
+    "human_handover": ["退款", "投诉", "法律"]
+  }
+}

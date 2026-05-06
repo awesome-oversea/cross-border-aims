@@ -1,0 +1,439 @@
+﻿{
+    "gateway":  {
+                    "mode":  "local",
+                    "port":  18789,
+                    "bind":  "lan",
+                    "auth":  {
+                                 "mode":  "token",
+                                 "token":  "${AIMS_GATEWAY_TOKEN}",
+                                 "allowTailscale":  true
+                             }
+                },
+    "agents":  {
+                   "defaults":  {
+                                    "workspace":  "D:/Project/aims/workspace",
+                                    "userTimezone":  "Asia/Shanghai",
+                                    "model":  {
+                                                  "primary":  "deepseek/deepseek-chat",
+                                                  "fallbacks":  [
+                                                                    "moonshot/moonshot-v1-128k",
+                                                                    "zhipu/glm-4-flash"
+                                                                ]
+                                              },
+                                    "heartbeat":  {
+                                                      "every":  "30m",
+                                                      "target":  "last"
+                                                  },
+                                    "tools":  {
+                                                  "profile":  "full",
+                                                  "fs":  {
+                                                             "workspaceOnly":  true
+                                                         },
+                                                  "elevated":  {
+                                                                   "enabled":  false
+                                                               }
+                                              },
+                                    "sandbox":  {
+                                                    "mode":  "non-main",
+                                                    "scope":  "agent"
+                                                }
+                                },
+                   "list":  [
+                                {
+                                    "id":  "main",
+                                    "default":  true,
+                                    "workspace":  "D:/Project/aims/workspace-main",
+                                    "identity":  {
+                                                     "name":  "AIMS营销助手",
+                                                     "theme":  "专业高效的AI全员营销系统",
+                                                     "emoji":  "🦞"
+                                                 }
+                                },
+                                {
+                                    "id":  "ecommerce",
+                                    "workspace":  "D:/Project/aims/workspace-ecommerce"
+                                },
+                                {
+                                    "id":  "social-media",
+                                    "workspace":  "D:/Project/aims/workspace-social"
+                                },
+                                {
+                                    "id":  "cs",
+                                    "workspace":  "D:/Project/aims/workspace-cs"
+                                },
+                                {
+                                    "id":  "office",
+                                    "workspace":  "D:/Project/aims/workspace-office"
+                                }
+                            ]
+               },
+    "models":  {
+                   "mode":  "merge",
+                   "providers":  {
+                                     "deepseek":  {
+                                                      "baseUrl":  "https://api.deepseek.com/v1",
+                                                      "apiKey":  "${DEEPSEEK_API_KEY}",
+                                                      "api":  "openai",
+                                                      "models":  [
+                                                                     {
+                                                                         "id":  "deepseek-chat",
+                                                                         "name":  "DeepSeek Chat",
+                                                                         "reasoning":  false,
+                                                                         "input":  [
+                                                                                       "text"
+                                                                                   ],
+                                                                         "cost":  {
+                                                                                      "input":  0.001,
+                                                                                      "output":  0.002,
+                                                                                      "cacheRead":  0,
+                                                                                      "cacheWrite":  0
+                                                                                  },
+                                                                         "contextWindow":  64000,
+                                                                         "maxTokens":  4096
+                                                                     }
+                                                                 ]
+                                                  },
+                                     "moonshot":  {
+                                                      "baseUrl":  "https://api.moonshot.cn/v1",
+                                                      "apiKey":  "${MOONSHOT_API_KEY}",
+                                                      "api":  "openai",
+                                                      "models":  [
+                                                                     {
+                                                                         "id":  "moonshot-v1-128k",
+                                                                         "name":  "Moonshot V1 128K",
+                                                                         "reasoning":  false,
+                                                                         "input":  [
+                                                                                       "text"
+                                                                                   ],
+                                                                         "cost":  {
+                                                                                      "input":  0.012,
+                                                                                      "output":  0.012,
+                                                                                      "cacheRead":  0,
+                                                                                      "cacheWrite":  0
+                                                                                  },
+                                                                         "contextWindow":  128000,
+                                                                         "maxTokens":  8192
+                                                                     }
+                                                                 ]
+                                                  },
+                                     "zhipu":  {
+                                                   "baseUrl":  "https://open.bigmodel.cn/api/paas/v4",
+                                                   "apiKey":  "${ZHIPU_API_KEY}",
+                                                   "api":  "openai",
+                                                   "models":  [
+                                                                  {
+                                                                      "id":  "glm-4-flash",
+                                                                      "name":  "GLM-4 Flash",
+                                                                      "reasoning":  false,
+                                                                      "input":  [
+                                                                                    "text"
+                                                                                ],
+                                                                      "cost":  {
+                                                                                   "input":  0.0001,
+                                                                                   "output":  0.0001,
+                                                                                   "cacheRead":  0,
+                                                                                   "cacheWrite":  0
+                                                                               },
+                                                                      "contextWindow":  128000,
+                                                                      "maxTokens":  4096
+                                                                  }
+                                                              ]
+                                               }
+                                 }
+               },
+    "bindings":  [
+                     {
+                         "agentId":  "office",
+                         "match":  {
+                                       "channel":  "feishu",
+                                       "peer":  {
+                                                    "kind":  "group",
+                                                    "id":  "${FEISHU_OFFICE_GROUP_ID}"
+                                                }
+                                   }
+                     },
+                     {
+                         "agentId":  "ecommerce",
+                         "match":  {
+                                       "channel":  "feishu",
+                                       "accountId":  "bot1"
+                                   }
+                     },
+                     {
+                         "agentId":  "social-media",
+                         "match":  {
+                                       "channel":  "feishu",
+                                       "accountId":  "bot2"
+                                   }
+                     },
+                     {
+                         "agentId":  "cs",
+                         "match":  {
+                                       "channel":  "wework"
+                                   }
+                     },
+                     {
+                         "agentId":  "main",
+                         "match":  {
+                                       "channel":  "*"
+                                   }
+                     }
+                 ],
+    "channels":  {
+                     "defaults":  {
+                                      "groupPolicy":  "allowlist"
+                                  },
+                     "feishu":  {
+                                    "enabled":  true,
+                                    "defaultAccount":  "bot1",
+                                    "dmPolicy":  "pairing",
+                                    "groupPolicy":  "allowlist",
+                                    "requireMention":  true,
+                                    "accounts":  {
+                                                     "bot1":  {
+                                                                  "appId":  "${FEISHU_BOT1_APP_ID}",
+                                                                  "appSecret":  "${FEISHU_BOT1_APP_SECRET}",
+                                                                  "name":  "AIMS电商助手",
+                                                                  "enabled":  true
+                                                              },
+                                                     "bot2":  {
+                                                                  "appId":  "${FEISHU_BOT2_APP_ID}",
+                                                                  "appSecret":  "${FEISHU_BOT2_APP_SECRET}",
+                                                                  "name":  "AIMS社媒助手",
+                                                                  "enabled":  true
+                                                              }
+                                                 },
+                                    "streaming":  true,
+                                    "blockStreaming":  true,
+                                    "typingIndicator":  false
+                                },
+                     "wework":  {
+                                    "enabled":  true,
+                                    "corpId":  "${WEWORK_CORP_ID}",
+                                    "agentSecret":  "${WEWORK_AGENT_SECRET}",
+                                    "dmPolicy":  "pairing"
+                                },
+                     "dingtalk":  {
+                                      "enabled":  true,
+                                      "appKey":  "${DINGTALK_APP_KEY}",
+                                      "appSecret":  "${DINGTALK_APP_SECRET}",
+                                      "dmPolicy":  "pairing"
+                                  },
+                     "telegram":  {
+                                      "enabled":  true,
+                                      "botToken":  "${TELEGRAM_BOT_TOKEN}",
+                                      "dmPolicy":  "pairing",
+                                      "allowFrom":  [
+                                                        "${TELEGRAM_ALLOW_FROM}"
+                                                    ],
+                                      "groups":  {
+                                                     "*":  {
+                                                               "requireMention":  true
+                                                           }
+                                                 }
+                                  },
+                     "whatsapp":  {
+                                      "enabled":  true,
+                                      "dmPolicy":  "pairing",
+                                      "allowFrom":  [
+                                                        "${WHATSAPP_ALLOW_FROM}"
+                                                    ],
+                                      "groups":  {
+                                                     "*":  {
+                                                               "requireMention":  true
+                                                           }
+                                                 }
+                                  },
+                     "discord":  {
+                                     "enabled":  true,
+                                     "token":  "${DISCORD_TOKEN}",
+                                     "dm":  {
+                                                "enabled":  true
+                                            }
+                                 }
+                 },
+    "skills":  {
+                   "load":  {
+                                "watch":  true,
+                                "watchDebounceMs":  250
+                            },
+                   "install":  {
+                                   "nodeManager":  "npm"
+                               },
+                   "entries":  {
+                                   "agent-health-optimizer":  {
+                                                                  "enabled":  true
+                                                              },
+                                   "auto-updater-windows":  {
+                                                                "enabled":  true
+                                                            },
+                                   "find-skills-skill":  {
+                                                             "enabled":  true
+                                                         },
+                                   "skill-manager":  {
+                                                         "enabled":  true
+                                                     },
+                                   "self-improvement":  {
+                                                            "enabled":  true
+                                                        },
+                                   "skill-vetter":  {
+                                                        "enabled":  true
+                                                    },
+                                   "listing-gen":  {
+                                                       "enabled":  true
+                                                   },
+                                   "ad-optimizer":  {
+                                                        "enabled":  true
+                                                    },
+                                   "review-mgr":  {
+                                                      "enabled":  true
+                                                  },
+                                   "material-gen":  {
+                                                        "enabled":  true
+                                                    },
+                                   "after-sale":  {
+                                                      "enabled":  true
+                                                  },
+                                   "xhs-seed":  {
+                                                    "enabled":  true
+                                                },
+                                   "douyin-ops":  {
+                                                      "enabled":  true
+                                                  },
+                                   "opinion-watch":  {
+                                                         "enabled":  true
+                                                     },
+                                   "order-query":  {
+                                                       "enabled":  true
+                                                   },
+                                   "logistics-track":  {
+                                                           "enabled":  true
+                                                       },
+                                   "doc-auto":  {
+                                                    "enabled":  true
+                                                },
+                                   "brave-search":  {
+                                                        "enabled":  true,
+                                                        "env":  {
+                                                                    "BRAVE_API_KEY":  "${BRAVE_API_KEY}"
+                                                                }
+                                                    },
+                                   "tavily-search":  {
+                                                         "enabled":  true,
+                                                         "env":  {
+                                                                     "TAVILY_API_KEY":  "${TAVILY_API_KEY}"
+                                                                 }
+                                                     },
+                                   "nano-banana-pro":  {
+                                                           "enabled":  true,
+                                                           "env":  {
+                                                                       "GEMINI_API_KEY":  "${GEMINI_API_KEY}"
+                                                                   }
+                                                       },
+                                   "agent-browser":  {
+                                                         "enabled":  true
+                                                     },
+                                   "summarize":  {
+                                                     "enabled":  true
+                                                 },
+                                   "data-analyst-pro":  {
+                                                            "enabled":  true
+                                                        },
+                                   "humanizer":  {
+                                                     "enabled":  true
+                                                 },
+                                   "feishu-doc":  {
+                                                      "enabled":  true,
+                                                      "env":  {
+                                                                  "FEISHU_APP_ID":  "${FEISHU_BOT1_APP_ID}",
+                                                                  "FEISHU_APP_SECRET":  "${FEISHU_BOT1_APP_SECRET}"
+                                                              }
+                                                  },
+                                   "rag-retrieval":  {
+                                                         "enabled":  true,
+                                                         "env":  {
+                                                                     "MILVUS_HOST":  "${MILVUS_HOST}",
+                                                                     "MILVUS_PORT":  "${MILVUS_PORT}"
+                                                                 }
+                                                     },
+                                   "cross-drain":  {
+                                                       "enabled":  true
+                                                   },
+                                   "email-mgr":  {
+                                                     "enabled":  true
+                                                 },
+                                   "video-channel":  {
+                                                         "enabled":  true
+                                                     },
+                                   "report-gen":  {
+                                                      "enabled":  true
+                                                  },
+                                   "excel-viz":  {
+                                                     "enabled":  true
+                                                 },
+                                   "intent-recognition":  {
+                                                              "enabled":  true
+                                                          },
+                                   "sentiment-analysis":  {
+                                                              "enabled":  true
+                                                          },
+                                   "confidence-gate":  {
+                                                           "enabled":  true
+                                                       },
+                                   "user-profile":  {
+                                                        "enabled":  true
+                                                    },
+                                   "smart-recommend":  {
+                                                           "enabled":  true
+                                                       },
+                                   "multimodal-理解":  {
+                                                         "enabled":  true
+                                                     },
+                                   "system-monitor":  {
+                                                          "enabled":  true
+                                                      },
+                                   "agent-orchestrator":  {
+                                                              "enabled":  true
+                                                          },
+                                   "skill-orchestrator":  {
+                                                              "enabled":  true
+                                                          },
+                                   "mcp-framework":  {
+                                                         "enabled":  true
+                                                     },
+                                   "knowledge-pipeline":  {
+                                                              "enabled":  true
+                                                          },
+                                   "cron-engine":  {
+                                                       "enabled":  true
+                                                   },
+                                   "data-layer":  {
+                                                      "enabled":  true
+                                                  },
+                                   "security-guard":  {
+                                                          "enabled":  true
+                                                      },
+                                   "skill-gate":  {
+                                                      "enabled":  true
+                                                  },
+                                   "web-crawler":  {
+                                                       "enabled":  true
+                                                   },
+                                   "data-flywheel":  {
+                                                         "enabled":  true
+                                                     }
+                               }
+               },
+    "session":  {
+                    "dmScope":  "per-channel-peer",
+                    "reset":  {
+                                  "mode":  "daily",
+                                  "atHour":  4,
+                                  "idleMinutes":  120
+                              }
+                },
+    "cron":  {
+                 "enabled":  true,
+                 "maxConcurrentRuns":  3
+             }
+}

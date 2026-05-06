@@ -1,0 +1,192 @@
+global:
+  imagePullSecrets: []
+  storageClass: "standard"
+
+openclaw:
+  enabled: true
+  image:
+    repository: ghcr.io/openclaw/openclaw
+    tag: latest
+    pullPolicy: Always
+  
+  replicaCount: 2
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+  
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+mysql:
+  enabled: true
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: Always
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: Always
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+
+etcd:
+  enabled: true
+  image:
+    repository: quay.io/coreos/etcd
+    tag: "v3.5.5"
+    pullPolicy: Always
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+
+minio:
+  enabled: true
+  image:
+    repository: minio/minio
+    tag: latest
+    pullPolicy: Always
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+
+milvus:
+  enabled: true
+  image:
+    repository: milvusdb/milvus
+    tag: "v2.4.6"
+    pullPolicy: Always
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+
+qdrant:
+  enabled: true
+  image:
+    repository: qdrant/qdrant
+    tag: latest
+    pullPolicy: Always
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: aims.openclaw.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: openclaw
+          port: 18789
+    - host: aims-minio.openclaw.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: minio
+          port: 9001
+    - host: aims-milvus.openclaw.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: milvus
+          port: 9091
+    - host: aims-qdrant.openclaw.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: qdrant
+          port: 6333
+
+networkPolicy:
+  enabled: true
+
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false

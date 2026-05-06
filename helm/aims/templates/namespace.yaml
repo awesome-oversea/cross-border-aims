@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    name: {{ .Release.Namespace }}
+    environment: {{ .Values.environment | default "production" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aims.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  MYSQL_DATABASE: "aims"
+  MYSQL_USER: "aims"
+  LLM_PRIMARY_MODEL: "deepseek-chat"
+  LLM_MULTIMODAL_MODEL: "gpt-4o"
+  LLM_RERANK_MODEL: "bge-reranker-v2-m3"
+  AIMS_GATEWAY_PORT: "18789"
+  AIMS_MYSQL_HOST_PORT: "23306"
+  AIMS_REDIS_HOST_PORT: "26379"
+  AIMS_MINIO_API_PORT: "19000"
+  AIMS_MINIO_CONSOLE_PORT: "19001"
+  AIMS_MILVUS_GRPC_PORT: "19530"
+  AIMS_MILVUS_HEALTH_PORT: "19091"
+  AIMS_QDRANT_HTTP_PORT: "16333"
+  AIMS_QDRANT_GRPC_PORT: "16334"
+  ETCD_AUTO_COMPACTION_MODE: "revision"
+  ETCD_AUTO_COMPACTION_RETENTION: "1000"
+  ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+  ETCD_SNAPSHOT_COUNT: "50000"
+  MINIO_USE_SSL: "false"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "aims.fullname" . }}-secrets
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "aims@2026"
+  MYSQL_PASSWORD: "aims@2026"
+  MINIO_ROOT_USER: "admin"
+  MINIO_ROOT_PASSWORD: "aims@2026"
+  AIMS_GATEWAY_TOKEN: "aims-secret-token-2026"
+  OPENAI_API_KEY: ""
+  DEEPSEEK_API_KEY: ""
+  GEMINI_API_KEY: ""
+  MOONSHOT_API_KEY: ""
+  ZHIPU_API_KEY: ""
+  FEISHU_BOT1_APP_ID: ""
+  FEISHU_BOT1_APP_SECRET: ""
+  FEISHU_BOT2_APP_ID: ""
+  FEISHU_BOT2_APP_SECRET: ""
+  FEISHU_OFFICE_GROUP_ID: ""
+  WEWORK_CORP_ID: ""
+  WEWORK_AGENT_SECRET: ""
+  DINGTALK_APP_KEY: ""
+  DINGTALK_APP_SECRET: ""
+  TELEGRAM_BOT_TOKEN: ""
+  TELEGRAM_ALLOW_FROM: ""
+  WHATSAPP_ALLOW_FROM: ""
+  DISCORD_TOKEN: ""
+  BRAVE_API_KEY: ""
+  TAVILY_API_KEY: ""

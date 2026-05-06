@@ -1,0 +1,77 @@
+# === Secrets & Environment ===
+.env
+.env.*
+!.env.example
+!.env.local.example
+!.env.test.example
+!.env.wsl.example
+
+# === Python ===
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+
+# === Node.js ===
+node_modules/
+.npm/
+
+# === IDE / Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Docker ===
+docker-compose.override.yml
+.docker/
+
+# === CI / Generated ===
+.generated/
+.generated*/
+.gradle/
+.plan/
+.clawhub/
+.pip/
+.coverage
+coverage/
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# === Project Data ===
+data/
+logs/
+workspace/
+workspace-*/
+知识库/
+tmp/
+.tmp*
+runtime/
+refrence/
+
+# === Database / Storage Volumes ===
+mysql-data/
+redis-data/
+milvus-data/
+qdrant-data/
+minio-data/
+
+# === Built Artifacts ===
+dist/
+build/
+*.tsbuildinfo

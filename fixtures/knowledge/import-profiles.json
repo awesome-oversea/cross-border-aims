@@ -1,0 +1,50 @@
+{
+  "project": "AIMS",
+  "version": 1,
+  "profiles": [
+    {
+      "importBatch": "P0-foundation",
+      "engine": "milvus",
+      "collection": "aims_foundation",
+      "chunking": {
+        "minChars": 500,
+        "maxChars": 900,
+        "overlapChars": 120
+      },
+      "description": "OpenClaw 与 AIMS 基座类知识，覆盖部署、架构、配置、安全与治理。"
+    },
+    {
+      "importBatch": "P1-capabilities",
+      "engine": "milvus",
+      "collection": "aims_capabilities",
+      "chunking": {
+        "minChars": 500,
+        "maxChars": 900,
+        "overlapChars": 120
+      },
+      "description": "能力层知识，覆盖 Skills、MCP、可组合执行链与最佳实践。"
+    },
+    {
+      "importBatch": "P1-integrations",
+      "engine": "qdrant",
+      "collection": "aims_integrations",
+      "chunking": {
+        "minChars": 500,
+        "maxChars": 900,
+        "overlapChars": 120
+      },
+      "description": "渠道与集成类知识，偏向接口、连接器与调用说明。"
+    },
+    {
+      "importBatch": "P2-expansion",
+      "engine": "qdrant",
+      "collection": "aims_expansion",
+      "chunking": {
+        "minChars": 500,
+        "maxChars": 900,
+        "overlapChars": 120
+      },
+      "description": "扩展与治理类知识，适合较长文本和策略型检索。"
+    }
+  ]
+}

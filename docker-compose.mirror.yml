@@ -1,0 +1,21 @@
+services:
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:latest
+
+  mysql:
+    image: docker.m.daocloud.io/library/mysql:8.0
+
+  redis:
+    image: docker.m.daocloud.io/library/redis:7-alpine
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+
+  minio:
+    image: docker.m.daocloud.io/minio/minio:latest
+
+  milvus:
+    image: docker.m.daocloud.io/milvusdb/milvus:v2.4.6
+
+  qdrant:
+    image: docker.m.daocloud.io/qdrant/qdrant:latest

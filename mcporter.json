@@ -1,0 +1,94 @@
+{
+  "mcpServers": {
+    "mysql-mcp": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "mysql-mcp"],
+      "env": {
+        "MYSQL_HOST": "mysql",
+        "MYSQL_PORT": "3306",
+        "MYSQL_DATABASE": "aims",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASSWORD": "${MYSQL_PASSWORD}"
+      }
+    },
+    "redis-mcp": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "redis-mcp"],
+      "env": {
+        "REDIS_URL": "redis://redis:6379"
+      }
+    },
+    "milvus-mcp": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "milvus-mcp"],
+      "env": {
+        "MILVUS_ADDRESS": "milvus:19530"
+      }
+    },
+    "qdrant-mcp": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "qdrant-mcp"],
+      "env": {
+        "QDRANT_URL": "http://qdrant:6333"
+      }
+    },
+    "quickchart": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "quickchart-mcp"]
+    },
+    "excel-mcp": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "excel-mcp"]
+    },
+    "ecom-mcp": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["D:/Project/aims/skills/mcp-framework/ecom_mcp.py"],
+      "env": {
+        "TAOBAO_APP_KEY": "${TAOBAO_APP_KEY}",
+        "TAOBAO_APP_SECRET": "${TAOBAO_APP_SECRET}",
+        "TAOBAO_SESSION_KEY": "${TAOBAO_SESSION_KEY}",
+        "JD_APP_KEY": "${JD_APP_KEY}",
+        "JD_APP_SECRET": "${JD_APP_SECRET}",
+        "JD_ACCESS_TOKEN": "${JD_ACCESS_TOKEN}",
+        "PDD_CLIENT_ID": "${PDD_CLIENT_ID}",
+        "PDD_CLIENT_SECRET": "${PDD_CLIENT_SECRET}",
+        "PDD_ACCESS_TOKEN": "${PDD_ACCESS_TOKEN}"
+      }
+    },
+    "social-mcp": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["D:/Project/aims/skills/mcp-framework/social_mcp.py"],
+      "env": {
+        "XHS_COOKIE": "${XHS_COOKIE}",
+        "DOUYIN_COOKIE": "${DOUYIN_COOKIE}",
+        "WEWORK_CORP_ID": "${WEWORK_CORP_ID}",
+        "WEWORK_AGENT_SECRET": "${WEWORK_AGENT_SECRET}"
+      }
+    },
+    "multimodal-mcp": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["D:/Project/aims/skills/mcp-framework/multimodal_mcp.py"],
+      "env": {
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+      }
+    },
+    "erp-mcp": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["D:/Project/aims/skills/mcp-framework/erp_mcp.py"],
+      "env": {
+        "ERP_API_URL": "${ERP_API_URL}",
+        "ERP_API_KEY": "${ERP_API_KEY}"
+      }
+    }
+  }
+}

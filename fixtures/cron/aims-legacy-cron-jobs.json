@@ -1,0 +1,92 @@
+[
+  {
+    "id": "team-daily-report",
+    "name": "团队日报生成",
+    "schedule": "0 9 * * *",
+    "agent": "office",
+    "skill": "report-gen",
+    "params": {
+      "type": "daily",
+      "target": "team"
+    },
+    "enabled": true
+  },
+  {
+    "id": "daily-ai-report",
+    "name": "AI运营日报",
+    "schedule": "0 8 * * *",
+    "agent": "ecommerce",
+    "skill": "report-gen",
+    "params": {
+      "type": "daily",
+      "target": "ai_ops"
+    },
+    "enabled": true
+  },
+  {
+    "id": "weekly-report",
+    "name": "周报生成",
+    "schedule": "0 18 * * 5",
+    "agent": "office",
+    "skill": "report-gen",
+    "params": {
+      "type": "weekly"
+    },
+    "enabled": true
+  },
+  {
+    "id": "xhs-daily-publish",
+    "name": "小红书每日发布",
+    "schedule": "30 12 * * *",
+    "agent": "social-media",
+    "skill": "xhs-seed",
+    "params": {
+      "action": "publish_scheduled"
+    },
+    "enabled": true
+  },
+  {
+    "id": "douyin-daily-publish",
+    "name": "抖音每日发布",
+    "schedule": "0 19 * * *",
+    "agent": "social-media",
+    "skill": "douyin-ops",
+    "params": {
+      "action": "publish_scheduled"
+    },
+    "enabled": true
+  },
+  {
+    "id": "video-channel-publish",
+    "name": "视频号定时发布",
+    "schedule": "0 20 * * 1,3,5",
+    "agent": "social-media",
+    "skill": "video-channel",
+    "params": {
+      "action": "publish_scheduled"
+    },
+    "enabled": true
+  },
+  {
+    "id": "opinion-watch-hourly",
+    "name": "舆情监控(每小时)",
+    "schedule": "0 * * * *",
+    "agent": "social-media",
+    "skill": "opinion-watch",
+    "params": {
+      "action": "scan"
+    },
+    "enabled": true
+  },
+  {
+    "id": "review-scan-daily",
+    "name": "评论扫描(每日)",
+    "schedule": "30 8 * * *",
+    "agent": "ecommerce",
+    "skill": "review-mgr",
+    "params": {
+      "action": "scan_negative"
+    },
+    "enabled": true
+  }
+]

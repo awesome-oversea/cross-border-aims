@@ -1,0 +1,65 @@
+{
+  "id": "main",
+  "name": "AIMS总控助手",
+  "description": "系统总控、通用问答、未匹配请求兜底、任务分发与跨域协调",
+  "persona": {
+    "role": "AI营销系统总负责人",
+    "traits": ["全局视野", "协调能力强", "智能路由", "用户至上"],
+    "tone": "专业、友好、可靠"
+  },
+  "capabilities": {
+    "task_routing": {
+      "description": "智能任务分发到各子Agent",
+      "enabled": true,
+      "tools": ["find-skills-skill"]
+    },
+    "general_qna": {
+      "description": "通用问答与知识检索",
+      "enabled": true,
+      "tools": ["brave-search", "tavily-search"]
+    },
+    "system_management": {
+      "description": "系统状态查询与管理",
+      "enabled": true,
+      "tools": ["agent-health-optimizer"]
+    },
+    "cross_domain_coordination": {
+      "description": "跨Agent任务协调",
+      "enabled": true,
+      "tools": ["agent-orchestrator", "skill-orchestrator"]
+    },
+    "fallback": {
+      "description": "未匹配请求兜底处理",
+      "enabled": true,
+      "tools": ["agent-orchestrator"]
+    }
+  },
+  "workspace": "D:/Project/aims/workspace-main",
+  "memory": {
+    "short_term": {
+      "max_messages": 100,
+      "ttl_minutes": 180
+    },
+    "long_term": {
+      "enabled": true,
+      "store_knowledge": true,
+      "store_conversations": true
+    }
+  },
+  "routing_rules": {
+    "channel": "*",
+    "keywords": [],
+    "fallback": true,
+    "sub_agents": [
+      {"id": "ecommerce", "keywords": ["商品", "广告", "评论", "订单", "Listing"]},
+      {"id": "social-media", "keywords": ["小红书", "抖音", "视频号", "舆情", "种草"]},
+      {"id": "cs", "keywords": ["客服", "售后", "订单查询", "物流"]},
+      {"id": "office", "keywords": ["报表", "周报", "文档", "会议"]}
+    ]
+  },
+  "safety": {
+    "enabled": true,
+    "risk_threshold": "low",
+    "human_handover": ["高风险", "安全", "隐私"]
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "project": "AIMS",
+  "version": 1,
+  "minimumScore": 4,
+  "collections": [
+    {
+      "collection": "ecom_rules",
+      "engine": "milvus",
+      "domain": "ecommerce",
+      "required": true,
+      "importOrder": 10,
+      "minimumScore": 4,
+      "sourceGroups": ["project-doc"],
+      "categoryKeys": ["project"],
+      "titleKeywords": ["Listing", "电商", "商品", "广告", "评论", "类目", "平台规则"],
+      "sourcePathKeywords": ["AI营销系统项目方案", "AIMS项目开发方案", "AIMS项目计划"],
+      "textKeywords": ["listing", "amazon", "taobao", "jd", "pdd", "广告", "评论", "平台规则", "类目", "标题", "五点", "搜索关键词", "ACOS", "ROAS", "review"]
+    },
+    {
+      "collection": "products",
+      "engine": "milvus",
+      "domain": "ecommerce",
+      "required": true,
+      "importOrder": 20,
+      "minimumScore": 4,
+      "sourceGroups": ["project-doc"],
+      "categoryKeys": ["project"],
+      "titleKeywords": ["商品", "产品", "SKU", "素材", "卖点"],
+      "sourcePathKeywords": ["AI营销系统项目方案", "AIMS项目开发方案"],
+      "textKeywords": ["商品", "产品", "sku", "卖点", "参数", "规格", "详情", "素材", "场景", "产品标题", "sellingPoints"]
+    },
+    {
+      "collection": "after_sales",
+      "engine": "milvus",
+      "domain": "cs",
+      "required": true,
+      "importOrder": 30,
+      "minimumScore": 4,
+      "sourceGroups": ["project-doc"],
+      "categoryKeys": ["project"],
+      "titleKeywords": ["售后", "物流", "订单", "退款", "退换货"],
+      "sourcePathKeywords": ["AI营销系统项目方案", "AIMS项目开发方案", "AIMS项目计划"],
+      "textKeywords": ["售后", "物流", "订单", "退款", "退货", "换货", "投诉", "咨询", "FAQ", "签收", "客服"]
+    },
+    {
+      "collection": "social_rules",
+      "engine": "qdrant",
+      "domain": "social-media",
+      "required": true,
+      "importOrder": 40,
+      "minimumScore": 4,
+      "sourceGroups": ["project-doc"],
+      "categoryKeys": ["project"],
+      "titleKeywords": ["社媒", "小红书", "抖音", "视频号", "种草"],
+      "sourcePathKeywords": ["AI营销系统项目方案", "AIMS项目开发方案", "AIMS项目计划"],
+      "textKeywords": ["小红书", "抖音", "视频号", "社媒", "内容规范", "敏感词", "禁忌词", "种草", "笔记", "短视频", "平台规则"]
+    },
+    {
+      "collection": "scripts",
+      "engine": "qdrant",
+      "domain": "office",
+      "required": true,
+      "importOrder": 50,
+      "minimumScore": 4,
+      "sourceGroups": ["project-doc"],
+      "categoryKeys": ["project"],
+      "titleKeywords": ["话术", "文案", "客服", "邮件", "回复"],
+      "sourcePathKeywords": ["AI营销系统项目方案", "AIMS项目开发方案"],
+      "textKeywords": ["话术", "文案", "客服", "邮件", "回复", "SOP", "模板", "评论回复", "私信", "开场白", "种草文案"]
+    },
+    {
+      "collection": "industry",
+      "engine": "qdrant",
+      "domain": "social-media",
+      "required": true,
+      "importOrder": 60,
+      "minimumScore": 3,
+      "sourceGroups": ["knowledge-base", "project-doc"],
+      "categoryKeys": ["enterprise", "governance", "project"],
+      "importBatches": ["P2-expansion"],
+      "titleKeywords": ["企业级", "案例", "最佳实践", "行业", "生态", "资源"],
+      "sourcePathKeywords": ["10-企业应用与最佳实践", "11-资料治理与来源", "AI营销系统项目方案"],
+      "textKeywords": ["行业", "竞品", "案例", "最佳实践", "趋势", "生态", "学习资源", "企业级", "投放策略", "增长"]
+    }
+  ],
+  "skillRoutes": [
+    { "skill": "listing-gen", "collection": "ecom_rules" },
+    { "skill": "ad-optimizer", "collection": "ecom_rules" },
+    { "skill": "review-mgr", "collection": "after_sales" },
+    { "skill": "material-gen", "collection": "products" },
+    { "skill": "xhs-seed", "collection": "social_rules" },
+    { "skill": "douyin-ops", "collection": "social_rules" },
+    { "skill": "video-channel", "collection": "social_rules" },
+    { "skill": "opinion-watch", "collection": "industry" },
+    { "skill": "cross-drain", "collection": "scripts" },
+    { "skill": "order-query", "collection": "after_sales" },
+    { "skill": "logistics-track", "collection": "after_sales" },
+    { "skill": "after-sale", "collection": "after_sales" },
+    { "skill": "email-mgr", "collection": "scripts" },
+    { "skill": "doc-auto", "collection": "scripts" }
+  ]
+}

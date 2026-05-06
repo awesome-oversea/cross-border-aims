@@ -1,0 +1,158 @@
+{{- if .Values.openclaw.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-openclaw
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: openclaw
+spec:
+  type: ClusterIP
+  ports:
+  - port: 18789
+    targetPort: 18789
+    protocol: TCP
+    name: gateway
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: openclaw
+{{- end }}
+---
+{{- if .Values.mysql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-mysql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: mysql
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+    name: mysql
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: mysql
+{{- end }}
+---
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+    name: redis
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: redis
+{{- end }}
+---
+{{- if .Values.etcd.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-etcd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: etcd
+spec:
+  type: ClusterIP
+  ports:
+  - port: 2379
+    targetPort: 2379
+    protocol: TCP
+    name: client
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: etcd
+{{- end }}
+---
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-minio
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: minio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+    protocol: TCP
+    name: api
+  - port: 9001
+    targetPort: 9001
+    protocol: TCP
+    name: console
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: minio
+{{- end }}
+---
+{{- if .Values.milvus.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-milvus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: milvus
+spec:
+  type: ClusterIP
+  ports:
+  - port: 19530
+    targetPort: 19530
+    protocol: TCP
+    name: grpc
+  - port: 9091
+    targetPort: 9091
+    protocol: TCP
+    name: metrics
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: milvus
+{{- end }}
+---
+{{- if .Values.qdrant.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aims.fullname" . }}-qdrant
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "aims.labels" . | nindent 4 }}
+    app: qdrant
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6333
+    targetPort: 6333
+    protocol: TCP
+    name: http
+  - port: 6334
+    targetPort: 6334
+    protocol: TCP
+    name: grpc
+  selector:
+    {{- include "aims.selectorLabels" . | nindent 4 }}
+    app: qdrant
+{{- end }}
