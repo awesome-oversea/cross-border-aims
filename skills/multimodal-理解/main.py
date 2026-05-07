@@ -200,6 +200,8 @@ def analyze_mixed(content, analysis_types):
     return text_results + image_results
 
 def analyze(content_type, content, analysis_types):
+    """多模态内容分析：按类型（图片/视频/文本/混合）路由到对应分析器"""
+
     if not analysis_types:
         analysis_types = ["ocr", "object_detection", "scene_recognition", "text_analysis", "sentiment", "key_points", "brand_detection", "logo_detection"]
     

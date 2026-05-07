@@ -13,6 +13,8 @@ def validate_input(input_data):
     return missing
 
 def classify_email(subject, body):
+    """邮件分类：基于关键词匹配归入客服/商务/会议/进度/一般"""
+
     categories = {
         "customer_service": ["订单", "退款", "售后", "客服", "投诉", "问题", "咨询", "帮助"],
         "business": ["报价", "合同", "合作", "询价", "采购", "招标"],

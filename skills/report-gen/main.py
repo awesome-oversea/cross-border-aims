@@ -12,6 +12,8 @@ def validate_input(input_data):
     return missing
 
 def generate_daily_report(input_data):
+    """生成日报：订单/营收/畅销商品/流量/客服多维度经营数据"""
+
     date = input_data.get("date", datetime.now().strftime("%Y-%m-%d"))
     platform = input_data.get("platform", "all")
     
@@ -112,6 +114,8 @@ def generate_daily_report(input_data):
     return report
 
 def generate_weekly_report(input_data):
+    """生成周报：周概览/每日趋势/品类排行/洞察/建议"""
+
     end_date = input_data.get("date", datetime.now().strftime("%Y-%m-%d"))
     start_date = (datetime.strptime(end_date, "%Y-%m-%d") - timedelta(days=6)).strftime("%Y-%m-%d")
     

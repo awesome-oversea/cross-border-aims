@@ -2,6 +2,7 @@ import json
 import sys
 from typing import Dict, List, Any
 
+# 跨平台导流规则：各平台允许的导流方式、禁用词和最佳发布时间
 PLATFORM_RULES = {
     "xiaohongshu": {
         "name": "小红书",
@@ -150,6 +151,7 @@ def check_compliance(platform: str, content: str) -> Dict:
         }
 
 def get_cross_platform_strategy(platforms: List[str], content_type: str = "product") -> Dict:
+    """跨平台导流策略：为多个平台分别生成导流方案并聚合"""
     strategies = []
     for platform in platforms:
         if platform in PLATFORM_RULES:

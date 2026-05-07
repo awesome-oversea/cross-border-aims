@@ -9,6 +9,7 @@ from typing import Dict, List, Any, Optional
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crawler.db")
 
+# 爬虫平台配置：各平台支持的目标类型、请求延迟范围、最大并发数
 PLATFORM_CONFIG = {
     "taobao": {"name": "淘宝/天猫", "target_types": ["product", "review", "sales"], "delay_range": [3, 8], "max_concurrent": 2},
     "jd": {"name": "京东", "target_types": ["product", "review", "price_history"], "delay_range": [2, 6], "max_concurrent": 3},
@@ -107,6 +108,8 @@ def init_db():
 
 
 class WebCrawler:
+    """网页爬虫引擎：管理爬取任务/模拟数据/代理池/统计"""
+
     def __init__(self):
         init_db()
         self.ua_pool = USER_AGENTS.copy()

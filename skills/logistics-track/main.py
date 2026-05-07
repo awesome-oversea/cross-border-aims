@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+# 快递公司信息库：运单号正则模式、平均时效、覆盖范围
 CARRIER_INFO = {
     'sf': {'name': '顺丰速运', 'code': 'SF', 'tracking_pattern': r'SF\d{12}', 'avg_days': 2, 'coverage': '国内'},
     'yt': {'name': '圆通速递', 'code': 'YT', 'tracking_pattern': r'YT\d{13}', 'avg_days': 3, 'coverage': '国内'},
@@ -42,6 +43,7 @@ EXCEPTION_TYPES = {
     'lost': {'label': '包裹丢失', 'suggestion': '请联系卖家和快递公司索赔', 'severity': 'critical'},
 }
 
+# 跨境物流阶段定义：国内揽收→运输→出口报关→国际运输→进口清关→目的国派送
 CROSS_BORDER_STAGES = [
     {'stage': 'domestic_pickup', 'label': '国内揽收', 'avg_hours': 24},
     {'stage': 'domestic_transit', 'label': '国内运输', 'avg_hours': 48},

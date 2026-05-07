@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+# 评论情感关键词：强/中/弱三级正向和负向词库
 SENTIMENT_KEYWORDS = {
     'positive': {
         'strong': ['非常好', '超级好', '太棒了', '完美', '强烈推荐', '非常满意', '超出预期', '物超所值'],

@@ -32,6 +32,8 @@ def get_profile(user_id):
     return default_profile
 
 def create_profile(user_id, name, phone="", tier="普通"):
+    """创建用户画像：按等级（VIP/银卡/普通）自动标记标签"""
+
     if user_id in _user_profiles:
         return {"success": False, "message": f"用户 {user_id} 已存在"}
 

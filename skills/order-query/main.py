@@ -43,6 +43,7 @@ STATUS_NEXT_STEP = {
     "refunding": {"action": "查看退款", "description": "退款处理中，请耐心等待", "timeout_hours": 72},
 }
 
+# 平台订单规则：各平台的订单前缀、自动取消时长、退换货窗口
 PLATFORM_ORDER_RULES = {
     'amazon': {
         'name': 'Amazon',

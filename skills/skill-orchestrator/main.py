@@ -11,6 +11,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "workflow.db"
 
 SKILL_BASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
+# 内置工作流模板：新品上架/订单全链路/差评危机/社媒活动/广告优化/电商闭环/社媒增长/客服闭环/办公自动化
 WORKFLOW_TEMPLATES = {
     "full_listing_launch": {
         "name": "新品上架全流程",
@@ -339,6 +340,8 @@ def get_db_connection():
 
 
 class SkillInvoker:
+    """技能调用器：通过subprocess调用技能main.py，按技能名自动构建输入参数"""
+
     def __init__(self):
         self.skill_cache = {}
 
@@ -843,6 +846,8 @@ class SkillInvoker:
 
 
 class ConditionEvaluator:
+    """条件评估器：判断工作流步骤的执行条件（是否有物流单号/订单ID/负面评论等）"""
+
     def __init__(self):
         self.conditions = {
             "has_tracking": self._has_tracking,
@@ -941,6 +946,8 @@ class ConditionEvaluator:
 
 
 class ResultAggregator:
+    """结果聚合器：按工作流类型聚合各步骤输出，生成结构化报告"""
+
     def __init__(self):
         self.aggregators = {
             "full_launch_report": self._full_launch_report,
@@ -1331,6 +1338,8 @@ class ResultAggregator:
 
 
 class WorkflowEngine:
+    """工作流引擎：编排多步骤业务闭环，支持条件执行/参数传递/执行持久化"""
+
     def __init__(self):
         self.invoker = SkillInvoker()
         self.condition_eval = ConditionEvaluator()

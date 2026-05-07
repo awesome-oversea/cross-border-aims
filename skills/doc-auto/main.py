@@ -7,6 +7,7 @@ import sys
 from typing import Dict, List, Optional
 
 # 文档类型模板
+# 文档类型模板：周报/会议纪要/项目计划/摘要/业务方案的结构定义
 DOCUMENT_TEMPLATES = {
     'weekly_report': {
         'description': '周报',
@@ -36,6 +37,7 @@ DOCUMENT_TEMPLATES = {
 }
 
 # 风险关键词
+# 风险关键词：涉及法律/合规/保密的敏感词
 RISK_KEYWORDS = [
     '合同', '协议', '法律', '法规', '合规', '条款',
     '保密', '机密', '隐私', '敏感',

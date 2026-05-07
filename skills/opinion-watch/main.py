@@ -7,6 +7,7 @@ import sys
 from typing import Dict, List, Optional
 
 # 情绪词库
+# 情感词库：正向/负向/危机三类情绪词
 SENTIMENT_WORDS = {
     'positive': ['好', '棒', '赞', '满意', '喜欢', '推荐', '不错', '爱了', '绝绝子'],
     'negative': ['差', '烂', '坏', '坑', '骗', '垃圾', '无语', '失望', '后悔'],
@@ -42,6 +43,7 @@ RISK_LEVELS = {
 }
 
 # 危机关键词
+# 危机关键词：触发危机响应的高风险词
 CRISIS_KEYWORDS = [
     '投诉', '举报', '曝光', '维权', '法律', '起诉', '欺诈', '假货', '劣质',
     '退款', '退货', '差评', '拉黑', '抵制', '倒闭', '跑路', '骗子', '诈骗',
@@ -209,6 +211,8 @@ def suggest_escalation(risk_level: str, themes: List[str]) -> Dict:
     return escalation_map.get(risk_level, escalation_map['medium'])
 
 def monitor_opinion(input_data: Dict) -> Dict:
+    """舆情监控主流程：情感分析→主题提取→风险评估→告警→升级路径→回复建议"""
+
     """监控舆情"""
     # 校验必要字段
     if 'content' not in input_data or not input_data.get('content'):

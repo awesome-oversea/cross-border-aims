@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 
 def analyze_sentiment(user_message, history=None, context=None):
+    """客服情感分析：正则模式匹配 + 情绪强度分级 + 历史连续负面检测 + 转人工策略"""
+
     if history is None:
         history = []
     if context is None:

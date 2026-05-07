@@ -14,6 +14,8 @@ def validate_input(input_data):
     return missing
 
 def generate_chart_spec(data, chart_type, title=""):
+    """生成ECharts图表配置：支持bar/line/pie/area/scatter/funnel/radar/gauge八种类型"""
+
     spec_templates = {
         "bar": {
             "type": "bar",

@@ -9,6 +9,7 @@ from typing import Dict, List, Any, Optional
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "flywheel.db")
 
+# CDC监听表配置：需跟踪变更的字段列表
 CDC_TABLES = {
     "products": {"primary_key": "id", "track_fields": ["title", "price", "stock", "status", "category"]},
     "orders": {"primary_key": "id", "track_fields": ["status", "amount", "quantity"]},
@@ -23,6 +24,7 @@ FEATURE_TYPES = {
     "content_feature": {"description": "内容特征", "fields": ["engagement_rate", "sentiment_score", "topic_vector", "quality_score"]},
 }
 
+# 向量集合配置：知识库向量的维度和目标数据库
 VECTOR_COLLECTIONS = {
     "ecom_rules": {"description": "电商规则知识库", "dimension": 768, "db": "milvus"},
     "products": {"description": "商品知识库", "dimension": 768, "db": "milvus"},
@@ -121,6 +123,8 @@ def init_db():
 
 
 class DataFlywheel:
+    """数据飞轮系统：CDC变更捕获 + 特征工程 + 向量同步 + 采纳追踪"""
+
     def __init__(self):
         init_db()
 

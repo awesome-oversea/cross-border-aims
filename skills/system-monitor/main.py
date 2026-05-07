@@ -2,6 +2,7 @@ import json
 import random
 from datetime import datetime, timedelta
 
+# 系统组件注册中心：gateway/agents/database/redis/milvus/qdrant/minio
 _component_registry = {
     "gateway": {"port": 18789, "protocol": "http", "critical": True},
     "agents": {"count": 5, "names": ["main", "ecommerce", "social-media", "cs", "office"], "critical": True},

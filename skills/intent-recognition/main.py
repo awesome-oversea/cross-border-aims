@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 
 def recognize_intent(user_message, history=None):
+    """客服意图识别：关键词匹配 + 历史上下文增强，输出意图标签和置信度"""
+
     if history is None:
         history = []
 

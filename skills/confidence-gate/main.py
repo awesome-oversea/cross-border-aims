@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 def evaluate_confidence(intent_result, sentiment_result, rag_result=None, context=None):
+    """置信度评估引擎：基于意图/情感/RAG/上下文四维加权，输出自动/确认/人工决策"""
     if rag_result is None:
         rag_result = {"hit": False, "confidence": 0.0, "content": ""}
     if context is None:

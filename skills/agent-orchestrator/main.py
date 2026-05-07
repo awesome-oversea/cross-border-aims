@@ -18,6 +18,7 @@ def _skill_path(skill_name: str) -> str:
     return os.path.join(SKILLS_ROOT, skill_name, "main.py")
 
 
+# 技能注册表：所有可用技能的路径、意图映射、所属域和描述
 SKILL_REGISTRY = {
     "skill-orchestrator": {
         "path": _skill_path("skill-orchestrator"),
@@ -191,6 +192,7 @@ INTENT_LABELS = {
     "unclear": "无法识别",
 }
 
+# 意图关键词映射：将用户消息中的关键词匹配到具体意图
 INTENT_KEYWORDS = {
     "listing_generation": ["listing", "标题", "产品描述", "五点描述", "上架", "生成listing"],
     "listing_optimization": ["优化listing", "标题优化", "关键词优化", "转化率低"],
@@ -415,6 +417,7 @@ def get_db_connection():
 
 
 class PerceptionModule:
+    """感知模块：意图识别 + 情感分析 + 实体提取 + RAG检索"""
     def __init__(self):
         self.name = "perception"
 
@@ -675,6 +678,7 @@ class PerceptionModule:
 
 
 class DecisionModule:
+    """决策模块：置信度评估 + 技能编排 + Agent路由"""
     def __init__(self):
         self.name = "decision"
 
@@ -954,6 +958,7 @@ class DecisionModule:
 
 
 class ExecutionModule:
+    """执行模块：按模式（串行/并行/工作流）调用技能并返回结果"""
     def __init__(self):
         self.name = "execution"
 
@@ -1423,6 +1428,7 @@ class ExecutionModule:
 
 
 class MemoryModule:
+    """记忆模块：会话持久化 + 上下文更新 + 洞察提取"""
     def __init__(self):
         self.name = "memory"
 
@@ -1623,6 +1629,7 @@ class MemoryModule:
 
 
 class AgentOrchestrator:
+    """Agent编排器：感知→决策→执行→记忆四阶段流水线，协调多技能协作"""
     def __init__(self):
         self.perception = PerceptionModule()
         self.decision = DecisionModule()

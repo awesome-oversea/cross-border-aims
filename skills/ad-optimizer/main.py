@@ -7,6 +7,7 @@ import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
+# 竞价策略配置：保守/稳健/激进，含目标ACOS区间和暂停阈值
 BID_STRATEGIES = {
     'conservative': {
         'name': '保守策略',
@@ -34,6 +35,7 @@ BID_STRATEGIES = {
     },
 }
 
+# 预算分配模型：绩效驱动/帕累托/均等/生命周期
 BUDGET_ALLOCATION_MODELS = {
     'performance_based': {
         'name': '绩效驱动分配',
@@ -57,6 +59,7 @@ BUDGET_ALLOCATION_MODELS = {
     },
 }
 
+# 广告类型规则：SP(商品推广)/SB(品牌推广)/SD(展示型推广)的优化重点和竞价策略
 CAMPAIGN_TYPE_RULES = {
     'sp': {
         'name': 'Sponsored Products',
@@ -78,6 +81,7 @@ CAMPAIGN_TYPE_RULES = {
     },
 }
 
+# 行业基准数据：各类目CTR/CVR/ACOS/CPC参考区间
 INDUSTRY_BENCHMARKS = {
     'electronics': {'ctr': (0.3, 0.8), 'cvr': (5, 12), 'acos': (18, 30), 'cpc_range': (0.5, 2.0)},
     'clothing': {'ctr': (0.4, 1.0), 'cvr': (3, 8), 'acos': (20, 35), 'cpc_range': (0.3, 1.5)},
@@ -167,6 +171,8 @@ def extract_metrics(input_data: Dict) -> Dict:
 
 def analyze_campaign_health(metrics: Dict, campaign_type: str, category: str = "",
                             strategy: str = "moderate") -> Dict:
+    """广告活动健康度分析：基于ACOS/CTR/CVR对比目标和行业基准，输出评分和改进项"""
+
     strategy_config = BID_STRATEGIES.get(strategy, BID_STRATEGIES['moderate'])
     campaign_rules = CAMPAIGN_TYPE_RULES.get(campaign_type, CAMPAIGN_TYPE_RULES['sp'])
     benchmarks = INDUSTRY_BENCHMARKS.get(category, {})
@@ -240,6 +246,8 @@ def analyze_campaign_health(metrics: Dict, campaign_type: str, category: str = "
 
 def generate_bid_recommendations(metrics: Dict, campaign_type: str, strategy: str = "moderate",
                                   keywords: List[Dict] = None) -> Dict:
+    """出价建议生成：按关键词四象限（ACOS×转化）给出提价/降价/暂停策略"""
+
     strategy_config = BID_STRATEGIES.get(strategy, BID_STRATEGIES['moderate'])
     max_change = strategy_config['max_bid_change']
     target_acos_low, target_acos_high = strategy_config['target_acos_range']
@@ -330,6 +338,9 @@ def generate_bid_recommendations(metrics: Dict, campaign_type: str, strategy: st
 
 
 def allocate_budget(campaigns: List[Dict], total_budget: float,
+                     model: str = "performance_based") -> Dict:
+    """预算分配算法：支持绩效驱动/帕累托/生命周期/均等四种分配模型"""
+
                      model: str = "performance_based") -> Dict:
     if not campaigns:
         return {"error": "无广告活动数据", "allocations": []}
@@ -541,6 +552,8 @@ def analyze_ad_portfolio(campaigns: List[Dict], category: str = "") -> Dict:
 
 
 def optimize_advertising(input_data: Dict) -> Dict:
+    """广告优化主流程：健康检查→出价建议→预算分配→ROI预测→组合分析→门控输出"""
+
     validation = validate_input(input_data)
     if validation["errors"]:
         return {"error": "输入不完整", "missing_fields": validation["errors"], "warnings": validation["warnings"]}

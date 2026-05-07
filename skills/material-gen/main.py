@@ -52,6 +52,7 @@ PLATFORM_CONFIG = {
 }
 
 # 文案风格模板
+# 文案风格模板：专业/促销/可信/生活方式/活力/真实
 STYLE_TEMPLATES = {
     'professional': {
         'prefix': 'Introducing',

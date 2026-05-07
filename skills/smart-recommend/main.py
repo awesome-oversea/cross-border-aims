@@ -34,6 +34,8 @@ def get_new_arrivals(limit=6):
     return [add_recommendation_info(p, "新品推荐") for p in new_arrivals]
 
 def get_personalized_recommendations(user_profile, limit=6):
+    """个性化推荐：基于用户标签和偏好对商品打分排序"""
+
     tags = user_profile.get("tags", [])
     preferences = user_profile.get("preferences", {})
     
@@ -162,6 +164,8 @@ def add_recommendation_info(product, reason, confidence=None):
     return result
 
 def recommend(user_id=None, user_profile=None, context=None, recommendation_type="personalized", limit=6):
+    """推荐引擎主入口：支持个性化/关联/热门/新品/互补/交叉销售六种推荐策略"""
+
     if user_profile is None:
         user_profile = {}
     if context is None:
