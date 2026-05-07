@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'aftersale.db')
 
+# 售后类型定义：仅退款、退货退款、换货、维修、补发
 REFUND_TYPES = {
     'refund_only': {
         'name': '仅退款',
@@ -48,6 +49,7 @@ REFUND_TYPES = {
     },
 }
 
+# 售后原因分类：质量问题、描述不符、物流问题、个人偏好、服务问题
 REASON_CATEGORIES = {
     'quality': {
         'name': '质量问题',
@@ -81,6 +83,11 @@ REASON_CATEGORIES = {
     },
 }
 
+# 售后状态机：状态流转关系图
+# submitted → reviewing → approved → returning → returned → refunding → completed
+#            → cancelled
+#                        → rejected → escalated → approved/rejected/completed
+#                                    → cancelled
 AFTERSALE_STATUS_MAP = {
     'submitted': {'label': '已提交', 'sort_order': 1, 'action': '等待审核'},
     'reviewing': {'label': '审核中', 'sort_order': 2, 'action': '商家正在审核'},
@@ -94,6 +101,7 @@ AFTERSALE_STATUS_MAP = {
     'escalated': {'label': '已升级', 'sort_order': 10, 'action': '平台介入处理'},
 }
 
+# 状态机允许的转换规则（有向图）
 STATUS_TRANSITIONS = {
     'submitted': ['reviewing', 'cancelled'],
     'reviewing': ['approved', 'rejected', 'escalated'],
@@ -107,6 +115,7 @@ STATUS_TRANSITIONS = {
     'escalated': ['approved', 'rejected', 'completed'],
 }
 
+# 自动审批规则：小额退款自动通过、VIP用户自动通过
 AUTO_APPROVE_RULES = {
     'max_refund_amount': 200,
     'quality_auto_reject_threshold': 0,
@@ -116,6 +125,7 @@ AUTO_APPROVE_RULES = {
     'vip_auto_approve': True,
 }
 
+# 赔偿规则：根据异常类型自动计算赔偿方案
 COMPENSATION_RULES = {
     'late_delivery': {'type': 'coupon', 'amount': 10, 'condition': '延迟超过3天'},
     'damaged_product': {'type': 'partial_refund', 'percentage': 30, 'condition': '轻微损坏'},
@@ -126,6 +136,7 @@ COMPENSATION_RULES = {
 
 
 def init_db():
+    """初始化SQLite数据库，创建售后订单表和状态时间线表"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS aftersale_orders (
@@ -159,6 +170,7 @@ def init_db():
 
 
 def get_db_connection():
+    """获取SQLite数据库连接（带行工厂）"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -167,6 +179,7 @@ def get_db_connection():
 def create_aftersale(order_id: str, aftersale_type: str, reason_category: str,
                      reason_detail: str, refund_amount: float = 0,
                      evidence: List[str] = None, buyer_id: str = "") -> Dict:
+    """创建售后申请，含自动审批逻辑与Skill-Gate置信度门控集成"""
     type_info = REFUND_TYPES.get(aftersale_type, {})
     if not type_info:
         return {"error": f"不支持的售后类型: {aftersale_type}"}
@@ -183,6 +196,23 @@ def create_aftersale(order_id: str, aftersale_type: str, reason_category: str,
         auto_approved = True
     if AUTO_APPROVE_RULES.get('vip_auto_approve') and buyer_id.startswith('VIP'):
         auto_approved = True
+
+    # Confidence-gate integration: when auto-approved, double-check via SkillGate
+    # to catch high-risk refunds that should route to human review
+    if auto_approved:
+        try:
+            import importlib.util as _iu
+            _cg = _iu.spec_from_file_location("as_cg", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "skill-gate", "main.py"))
+            if _cg and _cg.loader:
+                _cgm = _iu.module_from_spec(_cg)
+                sys.modules["as_cg"] = _cgm
+                _cg.loader.exec_module(_cgm)
+                _gr = _cgm.SkillGate().evaluate("refund" if aftersale_type in ("refund_only", "return_refund") else "after_sale_consult", "ecommerce", confidence=0.9, context={"refund_amount": refund_amount, "reason_category": reason_category})
+                if _gr.get("action") == "human_confirm":
+                    auto_approved = False
+                    initial_status = "submitted"
+        except Exception:
+            pass
 
     initial_status = 'approved' if auto_approved else 'submitted'
 
@@ -226,6 +256,7 @@ def create_aftersale(order_id: str, aftersale_type: str, reason_category: str,
 
 
 def _get_next_action(status: str, aftersale_type: str) -> Dict:
+    """根据当前状态和售后类型确定用户下一步操作指引"""
     actions = {
         'submitted': {"action": "等待审核", "description": "商家将在24小时内审核", "timeout_hours": 24},
         'reviewing': {"action": "审核中", "description": "商家正在审核您的申请", "timeout_hours": 24},
@@ -246,6 +277,8 @@ def _get_next_action(status: str, aftersale_type: str) -> Dict:
 
 
 def query_aftersale(aftersale_id: str = "", order_id: str = "") -> Dict:
+    """查询售后单详情（含时间线），未命中时返回模拟数据"""
+
     conn = get_db_connection()
     c = conn.cursor()
 
@@ -277,6 +310,8 @@ def query_aftersale(aftersale_id: str = "", order_id: str = "") -> Dict:
 
 
 def _generate_simulated_aftersale(aftersale_id: str, order_id: str) -> Dict:
+    """在数据库无数据时生成模拟售后单，便于演示和接口联调"""
+
     if not order_id:
         order_id = f"ORD{datetime.now().strftime('%Y%m%d')}0001"
     if not aftersale_id:
@@ -319,6 +354,7 @@ def _generate_simulated_aftersale(aftersale_id: str, order_id: str) -> Dict:
 
 def update_aftersale_status(aftersale_id: str, new_status: str, operator: str = "system",
                              notes: str = "") -> Dict:
+    """更新售后单状态，含状态机转换合法性校验"""
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT status, type FROM aftersale_orders WHERE aftersale_id = ?", (aftersale_id,))
@@ -355,6 +391,8 @@ def update_aftersale_status(aftersale_id: str, new_status: str, operator: str = 
 
 def calculate_compensation(order_id: str, reason_category: str, reason_detail: str,
                            order_amount: float) -> Dict:
+    """根据售后原因关键词匹配赔偿规则，计算赔偿方案"""
+
     compensation = None
     for rule_key, rule in COMPENSATION_RULES.items():
         if rule_key == 'late_delivery' and '延迟' in reason_detail:
@@ -389,6 +427,8 @@ def calculate_compensation(order_id: str, reason_category: str, reason_detail: s
 
 
 def process_aftersale(input_data: Dict) -> Dict:
+    """售后主入口：根据action参数分发到create/query/update/compensation子流程"""
+
     action = input_data.get('action', 'create')
     order_id = input_data.get('order_id', '')
     aftersale_id = input_data.get('aftersale_id', '')
@@ -432,6 +472,7 @@ def process_aftersale(input_data: Dict) -> Dict:
 
 
 def main():
+    """CLI入口：从stdin或argv读取JSON，调用售后处理流程并输出结果"""
     if len(sys.argv) > 1:
         input_json = sys.argv[1]
     else:

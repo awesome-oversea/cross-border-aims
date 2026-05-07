@@ -2,11 +2,39 @@ import json
 import os
 import sys
 from typing import Dict, List, Any
+import hashlib, random
+
+_EMBED_CACHE = {}
+def _embed(text: str, dim: int = 768) -> list:
+    """Try Ollama embedding, fallback to pseudo."""
+    if text in _EMBED_CACHE:
+        return _EMBED_CACHE[text]
+    try:
+        import json, urllib.request
+        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        data = json.dumps({"model": "nomic-embed-text", "prompt": text}).encode()
+        req = urllib.request.Request(f"{host}/api/embeddings", data=data, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            vec = json.loads(resp.read()).get("embedding")
+            if vec and len(vec) == dim:
+                _EMBED_CACHE[text] = vec
+                return vec
+    except Exception:
+        pass
+    # Fallback: deterministic pseudo-embedding
+    h = hashlib.sha256(text.encode('utf-8')).digest()
+    rng = random.Random(h)
+    vec = [rng.random() for _ in range(dim)]
+    norm = sum(x*x for x in vec) ** 0.5
+    vec = [x/norm for x in vec]
+    _EMBED_CACHE[text] = vec
+    return vec
 
 MILVUS_HOST = os.environ.get("MILVUS_HOST", "localhost")
 MILVUS_PORT = int(os.environ.get("MILVUS_PORT", "19530"))
 VECTOR_DIM = 384
 
+# RAG知识库模拟数据：ACOS优化/Listing优化/物流选择/产品合规/客服标准
 SIMULATED_DATA = [
     {
         "title": "亚马逊广告ACOS优化策略",
@@ -41,6 +69,8 @@ SIMULATED_DATA = [
 ]
 
 class ECommerceRAG:
+    """电商RAG检索器：优先连接Milvus向量库，不可用时降级为模拟文本匹配"""
+
     def __init__(self):
         self.use_simulated = True
         self.client = None

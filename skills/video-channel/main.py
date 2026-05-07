@@ -4,7 +4,37 @@
 import sys
 import json
 
+import importlib.util
+try:
+    _sp = importlib.util.spec_from_file_location("video-channel_dl", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..\data-layer\main.py"))
+    if _sp and _sp.loader:
+        _md = importlib.util.module_from_spec(_sp)
+        sys.modules["video-channel_dl"] = _md
+        _sp.loader.exec_module(_md)
+        vid_dl_avail = True
+    else:
+        vid_dl_avail = False
+except Exception:
+    vid_dl_avail = False
+
+def _store_vi(title, txt, plat):
+    if not vid_dl_avail:
+        return
+    try:
+        from datetime import datetime as _dt
+        _md.DataManager().insert_record("contents", {
+            "content_id": f"gen-{_dt.now().strftime('%Y%m%d%H%M%S%f')}",
+            "type": "post", "platform": plat,
+            "title": (title or "")[:200], "content": (txt or "")[:2000],
+            "tags": "[]", "status": "generated",
+            "created_at": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+    except Exception:
+        pass
+
+
 def validate_input(input_data):
+    """校验输入：必须提供product/topic和audience"""
     missing = []
     if not input_data.get("product") and not input_data.get("topic"):
         missing.append("product 或 topic")
@@ -13,6 +43,7 @@ def validate_input(input_data):
     return missing
 
 def generate_video_script(product, audience, duration=60):
+    """按时长生成视频脚本结构（短/中/长篇），含开场钩子与引导结尾"""
     opening_hooks = [
         "家人们！今天发现一个宝藏好物！",
         "姐妹们快看！这个真的绝了！",
@@ -84,6 +115,7 @@ def generate_video_script(product, audience, duration=60):
         return structures["long"]
 
 def generate_title(product, audience):
+    """根据受众群体生成标题候选（少女/青年/中年/通用）"""
     titles = {
         "young_female": [
             f"{product}真的绝了！姐妹们冲！",
@@ -122,6 +154,7 @@ def check_compliance(content):
     return violations
 
 def generate_distribution_suggestions(audience):
+    """根据受众推荐分发平台/发布时间/话题标签"""
     suggestions = {
         "young_female": {
             "platforms": ["小红书", "抖音", "视频号"],
@@ -168,6 +201,9 @@ def main():
         violations = check_compliance(content_topic)
         distribution = generate_distribution_suggestions(audience)
         
+        # 持久化生成记录到data-layer（可用时）
+    if '_dl_vid_avail' in dir() and _dl_vid_avail:
+            _store_vi(str(result.get("title_options", [""])[0]) if result.get("title_options") else "", str(result.get("script", {}).get("content", result.get("script", "")))[:2000], "video_channel")
         result = {
             "title_options": titles,
             "script": {

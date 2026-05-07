@@ -1,20 +1,28 @@
 import json
 import os
 import re
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import sys
 import hashlib
 import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge.db")
+_PG_HOST = os.environ.get("PG_HOST", "127.0.0.1")
+_PG_PORT = int(os.environ.get("PG_PORT", "5432"))
+_PG_USER = os.environ.get("PG_USER", "GodyChang")
+_PG_PASS = os.environ.get("PG_PASSWORD", "")
+_PG_DB = os.environ.get("PG_DATABASE", "aims")
 
+# 文本分块策略：每块800字符，块间重叠100字符（保证上下文连续）
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
 
+# 向量维度：与 embedding model (all-MiniLM-L6-v2) 输出对齐
 VECTOR_DIM = 384
 
+# 电商知识库（内置）：跨境电商运营/平台规则/产品开发/广告投放/物流仓储/财务合规
 ECOMMERCE_KNOWLEDGE = {
     "cross_border_ops": {
         "name": "跨境电商运营",
@@ -181,10 +189,10 @@ ECOMMERCE_KNOWLEDGE = {
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
+    import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
     c.execute("""CREATE TABLE IF NOT EXISTS knowledge_documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         doc_id TEXT UNIQUE,
         title TEXT,
         category TEXT,
@@ -198,18 +206,18 @@ def init_db():
         updated_at TEXT
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS knowledge_chunks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         chunk_id TEXT UNIQUE,
         doc_id TEXT,
         chunk_index INTEGER,
         content TEXT,
         char_count INTEGER DEFAULT 0,
-        vector BLOB,
+        vector BYTEA,
         created_at TEXT,
         FOREIGN KEY (doc_id) REFERENCES knowledge_documents(doc_id)
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS hallucination_checks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         query TEXT,
         response TEXT,
         sources TEXT,
@@ -219,7 +227,7 @@ def init_db():
         checked_at TEXT
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS import_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         import_id TEXT,
         source_type TEXT,
         source_path TEXT,
@@ -237,12 +245,13 @@ def init_db():
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
     return conn
 
 
 def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> List[str]:
+    """文本分块算法：按句号/感叹号/问号等边界进行智能切分，块间重叠保证上下文语义连贯"""
+
     if len(text) <= chunk_size:
         return [text]
 
@@ -255,7 +264,7 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
             break
 
         split_pos = end
-        for sep in ["。", ".", "！", "!", "？", "?", "\n", "；", ";"]:
+        for sep in ["。", ".", "！", "!", "？", "%s", "\n", "；", ";"]:
             pos = text.rfind(sep, start + chunk_size // 2, end)
             if pos > start:
                 split_pos = pos + 1
@@ -279,6 +288,8 @@ def generate_chunk_id(doc_id: str, chunk_index: int) -> str:
 
 
 def generate_vector(text: str) -> List[float]:
+    """生成文本向量：优先使用sentence-transformers，不可用时使用确定性伪随机向量"""
+
     try:
         from sentence_transformers import SentenceTransformer
         model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -290,6 +301,8 @@ def generate_vector(text: str) -> List[float]:
 
 
 def calculate_text_similarity(query: str, text: str) -> float:
+    """文本相似度算法（词袋模型）：中英文令牌化后计算Jaccard相似度"""
+
     def tokenize(s: str) -> set:
         tokens = set()
         words = re.findall(r"[a-zA-Z0-9]+", s.lower())
@@ -313,12 +326,15 @@ def calculate_text_similarity(query: str, text: str) -> float:
 
 
 class HallucinationDetector:
+    """幻觉检测器：评估回答在知识来源中的覆盖度、事实一致性、完整性，判定幻觉风险等级"""
     def __init__(self):
         self.min_confidence = 0.3
         self.high_risk_threshold = 0.5
         self.medium_risk_threshold = 0.7
 
     def check(self, query: str, response: str, sources: List[Dict]) -> Dict:
+        """幻觉检测主流程：计算source_coverage*0.4 + factual_consistency*0.4 + completeness*0.2"""
+
         if not sources:
             return {
                 "confidence_score": 0.0,
@@ -410,11 +426,13 @@ class HallucinationDetector:
 
 
 class KnowledgePipeline:
+    """知识库管道：管理内置/自定义文档的导入、检索、幻觉检测"""
     def __init__(self):
         init_db()
         self.hallucination_detector = HallucinationDetector()
 
     def import_builtin_knowledge(self) -> Dict:
+        """导入内置电商知识库到PostgreSQL，已存在文档自动更新"""
         import_id = f"import-{datetime.now().strftime('%Y%m%d%H%M%S')}"
         total_docs = 0
         imported_docs = 0
@@ -422,11 +440,11 @@ class KnowledgePipeline:
         total_chunks = 0
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         c.execute(
-            "INSERT INTO import_logs (import_id, source_type, source_path, total_docs, status, started_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO import_logs (import_id, source_type, source_path, total_docs, status, started_at) VALUES (%s, %s, %s, %s, %s, %s)",
             (import_id, "builtin", "ECOMMERCE_KNOWLEDGE", 0, "running", now),
         )
         conn.commit()
@@ -441,27 +459,27 @@ class KnowledgePipeline:
                     chunks = chunk_text(content)
 
                     c.execute(
-                        "SELECT id FROM knowledge_documents WHERE doc_id = ?",
+                        "SELECT id FROM knowledge_documents WHERE doc_id = %s",
                         (doc_id,),
                     )
                     existing = c.fetchone()
 
                     if existing:
                         c.execute(
-                            "UPDATE knowledge_documents SET title=?, category=?, content=?, tags=?, char_count=?, chunk_count=?, updated_at=? WHERE doc_id=?",
+                            "UPDATE knowledge_documents SET title=%s, category=%s, content=%s, tags=%s, char_count=%s, chunk_count=%s, updated_at=%s WHERE doc_id=%s",
                             (doc["title"], category_key, content, tags, len(content), len(chunks), now, doc_id),
                         )
-                        c.execute("DELETE FROM knowledge_chunks WHERE doc_id=?", (doc_id,))
+                        c.execute("DELETE FROM knowledge_chunks WHERE doc_id=%s", (doc_id,))
                     else:
                         c.execute(
-                            "INSERT INTO knowledge_documents (doc_id, title, category, content, tags, source, char_count, chunk_count, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            "INSERT INTO knowledge_documents (doc_id, title, category, content, tags, source, char_count, chunk_count, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                             (doc_id, doc["title"], category_key, content, tags, "builtin", len(content), len(chunks), "active", now, now),
                         )
 
                     for i, chunk in enumerate(chunks):
                         chunk_id = generate_chunk_id(doc_id, i)
                         c.execute(
-                            "INSERT INTO knowledge_chunks (chunk_id, doc_id, chunk_index, content, char_count, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            "INSERT INTO knowledge_chunks (chunk_id, doc_id, chunk_index, content, char_count, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
                             (chunk_id, doc_id, i, chunk, len(chunk), now),
                         )
 
@@ -471,7 +489,7 @@ class KnowledgePipeline:
                     failed_docs += 1
 
         c.execute(
-            "UPDATE import_logs SET total_docs=?, imported_docs=?, failed_docs=?, total_chunks=?, status=?, completed_at=? WHERE import_id=?",
+            "UPDATE import_logs SET total_docs=%s, imported_docs=%s, failed_docs=%s, total_chunks=%s, status=%s, completed_at=%s WHERE import_id=%s",
             (total_docs, imported_docs, failed_docs, total_chunks, "completed", now, import_id),
         )
         conn.commit()
@@ -488,7 +506,7 @@ class KnowledgePipeline:
 
     def import_document(self, title: str, category: str, content: str, tags: List[str] = None, source: str = "manual") -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         doc_id = generate_doc_id(title, category)
@@ -497,30 +515,33 @@ class KnowledgePipeline:
 
         try:
             c.execute(
-                "INSERT INTO knowledge_documents (doc_id, title, category, content, tags, source, char_count, chunk_count, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO knowledge_documents (doc_id, title, category, content, tags, source, char_count, chunk_count, status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (doc_id, title, category, content, tags_json, source, len(content), len(chunks), "active", now, now),
             )
 
             for i, chunk in enumerate(chunks):
                 chunk_id = generate_chunk_id(doc_id, i)
                 c.execute(
-                    "INSERT INTO knowledge_chunks (chunk_id, doc_id, chunk_index, content, char_count, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO knowledge_chunks (chunk_id, doc_id, chunk_index, content, char_count, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
                     (chunk_id, doc_id, i, chunk, len(chunk), now),
                 )
 
             conn.commit()
             conn.close()
             return {"success": True, "doc_id": doc_id, "chunks": len(chunks)}
-        except sqlite3.IntegrityError:
+        except Exception as _pg_ie:
+            conn.rollback()
+            if 'Duplicate' not in str(_pg_ie) and 'unique' not in str(_pg_ie).lower():
+                raise
             c.execute(
-                "UPDATE knowledge_documents SET title=?, content=?, tags=?, char_count=?, chunk_count=?, updated_at=? WHERE doc_id=?",
+                "UPDATE knowledge_documents SET title=%s, content=%s, tags=%s, char_count=%s, chunk_count=%s, updated_at=%s WHERE doc_id=%s",
                 (title, content, tags_json, len(content), len(chunks), now, doc_id),
             )
-            c.execute("DELETE FROM knowledge_chunks WHERE doc_id=?", (doc_id,))
+            c.execute("DELETE FROM knowledge_chunks WHERE doc_id=%s", (doc_id,))
             for i, chunk in enumerate(chunks):
                 chunk_id = generate_chunk_id(doc_id, i)
                 c.execute(
-                    "INSERT INTO knowledge_chunks (chunk_id, doc_id, chunk_index, content, char_count, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO knowledge_chunks (chunk_id, doc_id, chunk_index, content, char_count, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
                     (chunk_id, doc_id, i, chunk, len(chunk), now),
                 )
             conn.commit()
@@ -531,12 +552,13 @@ class KnowledgePipeline:
             return {"success": False, "error": str(e)}
 
     def search(self, query: str, top_k: int = 5, category: str = None) -> Dict:
+        """知识检索：按类目过滤 + 文本相似度排序，返回top_k结果"""
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
 
         if category:
             c.execute(
-                "SELECT chunk_id, doc_id, chunk_index, content FROM knowledge_chunks WHERE doc_id IN (SELECT doc_id FROM knowledge_documents WHERE category = ? AND status = 'active')",
+                "SELECT chunk_id, doc_id, chunk_index, content FROM knowledge_chunks WHERE doc_id IN (SELECT doc_id FROM knowledge_documents WHERE category = %s AND status = 'active')",
                 (category,),
             )
         else:
@@ -555,8 +577,8 @@ class KnowledgePipeline:
             score = calculate_text_similarity(query, chunk["content"])
             if score > 0:
                 c2 = get_db()
-                c2_cur = c2.cursor()
-                c2_cur.execute("SELECT title, category, tags FROM knowledge_documents WHERE doc_id = ?", (chunk["doc_id"],))
+                import psycopg2.extras as _pg_e; c2_cur = c2.cursor(cursor_factory=_pg_e.RealDictCursor)
+                c2_cur.execute("SELECT title, category, tags FROM knowledge_documents WHERE doc_id = %s", (chunk["doc_id"],))
                 doc_info = c2_cur.fetchone()
                 c2.close()
 
@@ -582,6 +604,8 @@ class KnowledgePipeline:
         }
 
     def search_with_hallucination_check(self, query: str, response: str, top_k: int = 5, category: str = None) -> Dict:
+        """检索+幻觉检测一体：先检索知识库，再检测回答的幻觉风险"""
+
         search_result = self.search(query, top_k, category)
 
         hallucination_result = self.hallucination_detector.check(
@@ -589,10 +613,10 @@ class KnowledgePipeline:
         )
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute(
-            "INSERT INTO hallucination_checks (query, response, sources, confidence_score, hallucination_risk, check_details, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO hallucination_checks (query, response, sources, confidence_score, hallucination_risk, check_details, checked_at) VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (
                 query,
                 response,
@@ -615,7 +639,7 @@ class KnowledgePipeline:
 
     def get_stats(self) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
 
         c.execute("SELECT COUNT(*) as total FROM knowledge_documents WHERE status='active'")
         doc_count = c.fetchone()["total"]
@@ -653,7 +677,7 @@ class KnowledgePipeline:
             }
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         c.execute("SELECT category, COUNT(*) as count FROM knowledge_documents WHERE status='active' GROUP BY category")
         db_stats = {row["category"]: row["count"] for row in c.fetchall()}
         conn.close()
@@ -665,8 +689,8 @@ class KnowledgePipeline:
 
     def delete_document(self, doc_id: str) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("UPDATE knowledge_documents SET status='deleted' WHERE doc_id=?", (doc_id,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("UPDATE knowledge_documents SET status='deleted' WHERE doc_id=%s", (doc_id,))
         affected = c.rowcount
         conn.commit()
         conn.close()
@@ -674,6 +698,7 @@ class KnowledgePipeline:
 
 
 def main():
+    """CLI入口：根据action参数路由到知识导入/检索/幻觉检测/统计等子模块"""
     input_data = json.loads(sys.stdin.read())
     action = input_data.get("action", "search")
     pipeline = KnowledgePipeline()

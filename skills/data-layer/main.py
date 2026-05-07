@@ -1,7 +1,8 @@
 import json
 import os
 import re
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import sys
 import hashlib
 import time
@@ -9,8 +10,35 @@ import random
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "aims_data.db")
+PG_CFG = {
+    "host": os.environ.get("PG_HOST", "127.0.0.1"),
+    "port": int(os.environ.get("PG_PORT", "5432")),
+    "dbname": os.environ.get("PG_DATABASE", "aims"),
+    "user": os.environ.get("PG_USER", "GodyChang"),
+    "password": os.environ.get("PG_PASSWORD", ""),
+}
 
+
+class DatabaseBackend:
+    """PostgreSQL数据库后端适配器：提供占位符/连接/异常/表结构查询的抽象"""
+    """PostgreSQL backend."""
+
+    def placeholder(self) -> str:
+        return "%s"
+
+    def connect(self):
+        return psycopg2.connect(**PG_CFG)
+
+    def integrity_error(self):
+        return psycopg2.errors.UniqueViolation
+
+    def table_info_sql(self, table: str) -> str:
+        return f"SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name='{table}' AND table_schema='public' ORDER BY ordinal_position"
+
+
+_db = DatabaseBackend()
+
+# 数据表定义：sessions会话/ users用户/ products商品/ orders订单/ reviews评论/ contents内容/ cron_jobs定时任务/ knowledge_docs知识库
 TABLE_DEFINITIONS = {
     "sessions": {
         "description": "会话记录表",
@@ -185,6 +213,7 @@ TABLE_DEFINITIONS = {
     },
 }
 
+# ETL管道定义：订单/商品/评论/内容/会话数据同步配置
 ETL_PIPELINES = {
     "order_sync": {
         "name": "订单数据同步",
@@ -225,52 +254,37 @@ ETL_PIPELINES = {
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-
-    for table_name, table_def in TABLE_DEFINITIONS.items():
-        columns_sql = ", ".join(table_def["columns"])
-        c.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_sql})")
-
-        for idx_col in table_def.get("indexes", []):
-            idx_name = f"idx_{table_name}_{idx_col}"
-            try:
-                c.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table_name} ({idx_col})")
-            except sqlite3.OperationalError:
-                pass
-
+    """仅初始化ETL辅助表和质检表，业务表由init.pg.sql管理"""
+    conn = psycopg2.connect(**PG_CFG)
+    c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     c.execute("""CREATE TABLE IF NOT EXISTS etl_pipeline_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         pipeline_name TEXT NOT NULL,
         execution_id TEXT NOT NULL,
         status TEXT DEFAULT 'running',
-        records_processed INTEGER DEFAULT 0,
-        records_inserted INTEGER DEFAULT 0,
-        records_updated INTEGER DEFAULT 0,
-        records_failed INTEGER DEFAULT 0,
+        records_processed INT DEFAULT 0,
+        records_inserted INT DEFAULT 0,
+        records_updated INT DEFAULT 0,
+        records_failed INT DEFAULT 0,
         started_at TEXT,
         completed_at TEXT,
-        duration_ms INTEGER DEFAULT 0,
+        duration_ms INT DEFAULT 0,
         error_message TEXT
     )""")
-
     c.execute("""CREATE TABLE IF NOT EXISTS data_quality_checks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         table_name TEXT NOT NULL,
         check_type TEXT NOT NULL,
         check_result TEXT,
-        issues_found INTEGER DEFAULT 0,
+        issues_found INT DEFAULT 0,
         checked_at TEXT
     )""")
-
     conn.commit()
     conn.close()
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return psycopg2.connect(**PG_CFG)
 
 
 def generate_id(prefix: str = "") -> str:
@@ -280,44 +294,48 @@ def generate_id(prefix: str = "") -> str:
 
 
 class DataManager:
+    """数据管理器：提供各业务表的CRUD操作（insert/query/schema/stats），含upsert逻辑"""
     def __init__(self):
         init_db()
 
     def insert_session(self, data: Dict) -> Dict:
+        """插入会话记录，session_id重复时返回错误"""
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         session_id = data.get("session_id", generate_id("sess-"))
         try:
             c.execute(
-                "INSERT INTO sessions (session_id, channel, user_id, agent_name, message, reply, intent, confidence, skill_used, duration_ms, tokens_used, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO sessions (session_id, channel, user_id, agent_name, message, reply, intent, confidence, skill_used, duration_ms, tokens_used, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (session_id, data.get("channel", ""), data.get("user_id", ""), data.get("agent_name", "main"), data.get("message", ""), data.get("reply", ""), data.get("intent", ""), data.get("confidence", 0.0), data.get("skill_used", ""), data.get("duration_ms", 0), data.get("tokens_used", 0), now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "session_id": session_id}
-        except sqlite3.IntegrityError:
+        except psycopg2.errors.UniqueViolation:
             conn.close()
             return {"success": False, "error": "session_id已存在"}
 
     def insert_user(self, data: Dict) -> Dict:
+        """插入/更新用户：已存在时自动更新活跃时间和交互计数"""
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         user_id = data.get("user_id", generate_id("user-"))
         try:
             c.execute(
-                "INSERT INTO users (user_id, channel, external_id, name, avatar, role, preferences, interaction_count, last_active_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO users (user_id, channel, external_id, name, avatar, role, preferences, interaction_count, last_active_at, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (user_id, data.get("channel", ""), data.get("external_id", ""), data.get("name", ""), data.get("avatar", ""), data.get("role", "user"), json.dumps(data.get("preferences", {}), ensure_ascii=False), data.get("interaction_count", 0), now, now, now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "user_id": user_id}
-        except sqlite3.IntegrityError:
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
             c.execute(
-                "UPDATE users SET name=?, last_active_at=?, interaction_count=interaction_count+1, updated_at=? WHERE user_id=?",
+                "UPDATE users SET name=%s, last_active_at=%s, interaction_count=interaction_count+1, updated_at=%s WHERE user_id=%s",
                 (data.get("name", ""), now, now, user_id),
             )
             conn.commit()
@@ -325,22 +343,24 @@ class DataManager:
             return {"success": True, "user_id": user_id, "updated": True}
 
     def insert_product(self, data: Dict) -> Dict:
+        """插入/更新商品：已存在时更新价格/排名/评分等动态字段"""
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         product_id = data.get("product_id", generate_id("prod-"))
         try:
             c.execute(
-                "INSERT INTO products (product_id, platform, sku_id, title, price, currency, category, subcategory, selling_points, description, images, status, bsr_rank, review_count, rating, monthly_sales, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO products (product_id, platform, sku_id, title, price, currency, category, subcategory, selling_points, description, images, status, bsr_rank, review_count, rating, monthly_sales, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (product_id, data.get("platform", ""), data.get("sku_id", ""), data.get("title", ""), data.get("price", 0.0), data.get("currency", "CNY"), data.get("category", ""), data.get("subcategory", ""), data.get("selling_points", ""), data.get("description", ""), json.dumps(data.get("images", []), ensure_ascii=False), data.get("status", "active"), data.get("bsr_rank", 0), data.get("review_count", 0), data.get("rating", 0.0), data.get("monthly_sales", 0), now, now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "product_id": product_id}
-        except sqlite3.IntegrityError:
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
             c.execute(
-                "UPDATE products SET title=?, price=?, category=?, selling_points=?, bsr_rank=?, review_count=?, rating=?, monthly_sales=?, updated_at=? WHERE product_id=?",
+                "UPDATE products SET title=%s, price=%s, category=%s, selling_points=%s, bsr_rank=%s, review_count=%s, rating=%s, monthly_sales=%s, updated_at=%s WHERE product_id=%s",
                 (data.get("title", ""), data.get("price", 0.0), data.get("category", ""), data.get("selling_points", ""), data.get("bsr_rank", 0), data.get("review_count", 0), data.get("rating", 0.0), data.get("monthly_sales", 0), now, product_id),
             )
             conn.commit()
@@ -348,22 +368,24 @@ class DataManager:
             return {"success": True, "product_id": product_id, "updated": True}
 
     def insert_order(self, data: Dict) -> Dict:
+        """插入/更新订单：已存在时更新订单状态和物流信息"""
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         order_id = data.get("order_id", generate_id("ord-"))
         try:
             c.execute(
-                "INSERT INTO orders (order_id, platform, order_no, product_id, product_title, quantity, amount, currency, status, buyer_id, buyer_name, shipping_address, tracking_number, logistics_status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO orders (order_id, platform, order_no, product_id, product_title, quantity, amount, currency, status, buyer_id, buyer_name, shipping_address, tracking_number, logistics_status, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (order_id, data.get("platform", ""), data.get("order_no", ""), data.get("product_id", ""), data.get("product_title", ""), data.get("quantity", 1), data.get("amount", 0.0), data.get("currency", "CNY"), data.get("status", "pending"), data.get("buyer_id", ""), data.get("buyer_name", ""), data.get("shipping_address", ""), data.get("tracking_number", ""), data.get("logistics_status", ""), now, now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "order_id": order_id}
-        except sqlite3.IntegrityError:
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
             c.execute(
-                "UPDATE orders SET status=?, tracking_number=?, logistics_status=?, updated_at=? WHERE order_id=?",
+                "UPDATE orders SET status=%s, tracking_number=%s, logistics_status=%s, updated_at=%s WHERE order_id=%s",
                 (data.get("status", "pending"), data.get("tracking_number", ""), data.get("logistics_status", ""), now, order_id),
             )
             conn.commit()
@@ -372,39 +394,40 @@ class DataManager:
 
     def insert_review(self, data: Dict) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         review_id = data.get("review_id", generate_id("rev-"))
         try:
             c.execute(
-                "INSERT INTO reviews (review_id, platform, product_id, order_id, content, rating, sentiment, sentiment_score, replied, reply_content, reviewer_name, review_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO reviews (review_id, platform, product_id, order_id, content, rating, sentiment, sentiment_score, replied, reply_content, reviewer_name, review_date, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (review_id, data.get("platform", ""), data.get("product_id", ""), data.get("order_id", ""), data.get("content", ""), data.get("rating", 5), data.get("sentiment", "neutral"), data.get("sentiment_score", 0.5), 0, None, data.get("reviewer_name", ""), data.get("review_date", now), now, now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "review_id": review_id}
-        except sqlite3.IntegrityError:
+        except psycopg2.errors.UniqueViolation:
             conn.close()
-            return {"success": False, "error": "review_id已存在"}
+            return {"success": False, "error": "review_id已存在", "review_id": review_id}
 
     def insert_content(self, data: Dict) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         content_id = data.get("content_id", generate_id("cnt-"))
         try:
             c.execute(
-                "INSERT INTO contents (content_id, type, platform, title, content, tags, status, published_at, views, likes, comments, shares, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO contents (content_id, type, platform, title, content, tags, status, published_at, views, likes, comments, shares, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (content_id, data.get("type", "post"), data.get("platform", ""), data.get("title", ""), data.get("content", ""), json.dumps(data.get("tags", []), ensure_ascii=False), data.get("status", "draft"), data.get("published_at"), data.get("views", 0), data.get("likes", 0), data.get("comments", 0), data.get("shares", 0), now, now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "content_id": content_id}
-        except sqlite3.IntegrityError:
+        except psycopg2.errors.UniqueViolation:
+            conn.rollback()
             c.execute(
-                "UPDATE contents SET views=?, likes=?, comments=?, shares=?, status=?, updated_at=? WHERE content_id=?",
+                "UPDATE contents SET views=%s, likes=%s, comments=%s, shares=%s, status=%s, updated_at=%s WHERE content_id=%s",
                 (data.get("views", 0), data.get("likes", 0), data.get("comments", 0), data.get("shares", 0), data.get("status", "draft"), now, content_id),
             )
             conn.commit()
@@ -412,31 +435,33 @@ class DataManager:
             return {"success": True, "content_id": content_id, "updated": True}
 
     def query_table(self, table_name: str, conditions: Dict = None, limit: int = 20, offset: int = 0) -> Dict:
+        """通用条件查询：支持等值/IN/LIKE条件组合，带分页"""
+
         if table_name not in TABLE_DEFINITIONS:
             return {"success": False, "error": f"表 {table_name} 不存在"}
 
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         if conditions:
             where_parts = []
             params = []
             for key, value in conditions.items():
                 if isinstance(value, list):
-                    placeholders = ",".join(["?"] * len(value))
+                    placeholders = ",".join(["%s"] * len(value))
                     where_parts.append(f"{key} IN ({placeholders})")
                     params.extend(value)
                 elif isinstance(value, str) and "%" in value:
-                    where_parts.append(f"{key} LIKE ?")
+                    where_parts.append(f"{key} LIKE %s")
                     params.append(value)
                 else:
-                    where_parts.append(f"{key} = ?")
+                    where_parts.append(f"{key} = %s")
                     params.append(value)
 
             where_clause = " AND ".join(where_parts)
-            c.execute(f"SELECT * FROM {table_name} WHERE {where_clause} ORDER BY id DESC LIMIT ? OFFSET ?", params + [limit, offset])
+            c.execute(f"SELECT * FROM {table_name} WHERE {where_clause} ORDER BY id DESC LIMIT %s OFFSET %s", params + [limit, offset])
         else:
-            c.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+            c.execute(f"SELECT * FROM {table_name} ORDER BY id DESC LIMIT %s OFFSET %s", (limit, offset))
 
         rows = [dict(row) for row in c.fetchall()]
         conn.close()
@@ -444,7 +469,7 @@ class DataManager:
 
     def get_table_stats(self) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         stats = {}
 
         for table_name in TABLE_DEFINITIONS:
@@ -460,8 +485,8 @@ class DataManager:
             return {"success": False, "error": f"表 {table_name} 不存在"}
 
         conn = get_db()
-        c = conn.cursor()
-        c.execute(f"PRAGMA table_info({table_name})")
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        c.execute(_db.table_info_sql(table_name))
         columns = [dict(row) for row in c.fetchall()]
         conn.close()
 
@@ -475,10 +500,13 @@ class DataManager:
 
 
 class ETLPipeline:
+    """ETL数据管道：从电商/社媒API同步数据到本地数据库，含执行日志和质量检测"""
     def __init__(self, data_manager: DataManager = None):
         self.data_manager = data_manager or DataManager()
 
     def run_pipeline(self, pipeline_name: str) -> Dict:
+        """执行ETL管道：记录执行日志、运行数据同步、统计处理量"""
+
         pipeline = ETL_PIPELINES.get(pipeline_name)
         if not pipeline:
             return {"success": False, "error": f"管道 {pipeline_name} 不存在"}
@@ -488,9 +516,9 @@ class ETLPipeline:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         c.execute(
-            "INSERT INTO etl_pipeline_logs (pipeline_name, execution_id, status, started_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO etl_pipeline_logs (pipeline_name, execution_id, status, started_at) VALUES (%s, %s, %s, %s)",
             (pipeline_name, execution_id, "running", now),
         )
         conn.commit()
@@ -500,7 +528,7 @@ class ETLPipeline:
 
             duration = int((time.time() - start_time) * 1000)
             c.execute(
-                "UPDATE etl_pipeline_logs SET status=?, records_processed=?, records_inserted=?, records_updated=?, records_failed=?, completed_at=?, duration_ms=? WHERE execution_id=?",
+                "UPDATE etl_pipeline_logs SET status=%s, records_processed=%s, records_inserted=%s, records_updated=%s, records_failed=%s, completed_at=%s, duration_ms=%s WHERE execution_id=%s",
                 ("completed", result.get("processed", 0), result.get("inserted", 0), result.get("updated", 0), result.get("failed", 0), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), duration, execution_id),
             )
             conn.commit()
@@ -517,7 +545,7 @@ class ETLPipeline:
         except Exception as e:
             duration = int((time.time() - start_time) * 1000)
             c.execute(
-                "UPDATE etl_pipeline_logs SET status=?, error_message=?, completed_at=?, duration_ms=? WHERE execution_id=?",
+                "UPDATE etl_pipeline_logs SET status=%s, error_message=%s, completed_at=%s, duration_ms=%s WHERE execution_id=%s",
                 ("failed", str(e), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), duration, execution_id),
             )
             conn.commit()
@@ -659,8 +687,8 @@ class ETLPipeline:
 
     def get_pipeline_logs(self, limit: int = 20) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM etl_pipeline_logs ORDER BY started_at DESC LIMIT ?", (limit,))
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        c.execute("SELECT * FROM etl_pipeline_logs ORDER BY started_at DESC LIMIT %s", (limit,))
         logs = [dict(row) for row in c.fetchall()]
         conn.close()
         return {"success": True, "logs": logs, "total": len(logs)}
@@ -669,8 +697,10 @@ class ETLPipeline:
         return {"success": True, "pipelines": ETL_PIPELINES, "total": len(ETL_PIPELINES)}
 
     def run_data_quality_check(self) -> Dict:
+        """数据质量检查：逐表扫描空值率、重复记录，输出质量报告"""
+
         conn = get_db()
-        c = conn.cursor()
+        c = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         issues = []
 
@@ -678,8 +708,8 @@ class ETLPipeline:
             c.execute(f"SELECT COUNT(*) as count FROM {table_name}")
             count = c.fetchone()["count"]
 
-            c.execute(f"PRAGMA table_info({table_name})")
-            columns = [row["name"] for row in c.fetchall()]
+            c.execute(_db.table_info_sql(table_name))
+            columns = [row.get("column_name", row.get("name", "")) for row in c.fetchall()]
 
             for col in columns:
                 try:
@@ -689,8 +719,8 @@ class ETLPipeline:
                         null_pct = round(null_count / count * 100, 1)
                         if null_pct > 50:
                             issues.append({"table": table_name, "column": col, "issue": f"空值率{null_pct}%", "severity": "high"})
-                except sqlite3.OperationalError:
-                    pass
+                except Exception:
+                    conn.rollback()
 
             try:
                 id_col = columns[0] if columns else "id"
@@ -698,13 +728,17 @@ class ETLPipeline:
                 dup_count = c.fetchone()["dup_count"]
                 if dup_count > 0:
                     issues.append({"table": table_name, "issue": f"存在{dup_count}条重复记录", "severity": "medium"})
-            except sqlite3.OperationalError:
-                pass
+            except Exception:
+                conn.rollback()
 
-            c.execute(
-                "INSERT INTO data_quality_checks (table_name, check_type, check_result, issues_found, checked_at) VALUES (?, ?, ?, ?, ?)",
-                (table_name, "comprehensive", "pass" if not any(i["table"] == table_name for i in issues) else "issues_found", sum(1 for i in issues if i["table"] == table_name), now),
-            )
+            try:
+                conn.rollback()  # Clear any aborted transaction
+                c.execute(
+                    "INSERT INTO data_quality_checks (table_name, check_type, check_result, issues_found, checked_at) VALUES (%s, %s, %s, %s, %s)",
+                    (table_name, "comprehensive", "pass" if not any(i["table"] == table_name for i in issues) else "issues_found", sum(1 for i in issues if i["table"] == table_name), now),
+                )
+            except Exception:
+                conn.rollback()
 
         conn.commit()
         conn.close()

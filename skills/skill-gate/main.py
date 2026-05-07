@@ -1,12 +1,19 @@
 import json
 import os
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import sys
+import random
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate.db")
+_PG_HOST = os.environ.get("PG_HOST", "127.0.0.1")
+_PG_PORT = int(os.environ.get("PG_PORT", "5432"))
+_PG_USER = os.environ.get("PG_USER", "GodyChang")
+_PG_PASS = os.environ.get("PG_PASSWORD", "")
+_PG_DB = os.environ.get("PG_DATABASE", "aims")
 
+# 门控注册表：按Agent分类，定义每个操作的基础风险等级（low/medium/high）
 GATE_REGISTRY = {
     "ecommerce": {
         "listing_gen": {"default_level": "low", "description": "Listing生成"},
@@ -55,6 +62,7 @@ GATE_REGISTRY = {
 
 LEVEL_PRIORITY = {"low": 0, "medium": 1, "high": 2}
 
+# 风险等级阈值：low→自动执行、medium→执行并通知、high→人工确认
 LEVEL_THRESHOLDS = {
     "low": {"min_confidence": 0.9, "action": "auto_execute", "notify": False},
     "medium": {"min_confidence": 0.6, "action": "execute_and_notify", "notify": True},
@@ -63,17 +71,16 @@ LEVEL_THRESHOLDS = {
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
     return conn
 
 
 def init_db():
     conn = get_db()
-    c = conn.cursor()
+    import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
     c.execute("""
         CREATE TABLE IF NOT EXISTS gate_rules (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             agent TEXT NOT NULL,
             operation TEXT NOT NULL,
             default_level TEXT NOT NULL DEFAULT 'medium',
@@ -85,7 +92,7 @@ def init_db():
     """)
     c.execute("""
         CREATE TABLE IF NOT EXISTS gate_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             gate_id TEXT NOT NULL UNIQUE,
             agent TEXT NOT NULL,
             operation TEXT NOT NULL,
@@ -105,7 +112,7 @@ def init_db():
     """)
     c.execute("""
         CREATE TABLE IF NOT EXISTS gate_notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             gate_id TEXT NOT NULL,
             agent TEXT NOT NULL,
             operation TEXT NOT NULL,
@@ -119,13 +126,13 @@ def init_db():
     for agent, ops in GATE_REGISTRY.items():
         for op_name, op_config in ops.items():
             c.execute(
-                "SELECT id FROM gate_rules WHERE agent=? AND operation=?",
+                "SELECT id FROM gate_rules WHERE agent=%s AND operation=%s",
                 (agent, op_name),
             )
             if not c.fetchone():
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 c.execute(
-                    "INSERT INTO gate_rules (agent, operation, default_level, conditions, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO gate_rules (agent, operation, default_level, conditions, description, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (agent, op_name, op_config["default_level"], "[]", op_config["description"], now, now),
                 )
 
@@ -134,6 +141,7 @@ def init_db():
 
 
 class SkillGate:
+    """技能门控系统：根据操作风险等级和AI置信度决定自动执行/通知/人工确认，支持条件规则动态提权"""
     def __init__(self):
         init_db()
         self.custom_conditions = self._load_conditions()
@@ -141,7 +149,7 @@ class SkillGate:
     def _load_conditions(self) -> Dict:
         conditions = {}
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         c.execute("SELECT agent, operation, conditions FROM gate_rules")
         for row in c.fetchall():
             key = f"{row['agent']}:{row['operation']}"
@@ -153,19 +161,21 @@ class SkillGate:
         return conditions
 
     def evaluate(self, operation: str, agent: str, confidence: float = 1.0, context: Dict = None) -> Dict:
+        """门控评估：确定操作风险等级 → 应用条件规则 → 结合置信度 → 输出执行策略"""
+
         if context is None:
             context = {}
 
         level = self._determine_level(agent, operation, confidence, context)
         threshold = LEVEL_THRESHOLDS[level]
 
-        gate_id = f"gate-{datetime.now().strftime('%Y%m%d%H%M%S')}-{abs(hash(f'{agent}:{operation}')) % 10000:04d}"
+        gate_id = f"gate-{datetime.now().strftime('%Y%m%d%H%M%S%f')}-{random.randint(10000, 99999)}"
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute(
-            "INSERT INTO gate_records (gate_id, agent, operation, level, confidence, params, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO gate_records (gate_id, agent, operation, level, confidence, params, status, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
             (gate_id, agent, operation, level, confidence, json.dumps(context, ensure_ascii=False, default=str)[:500], threshold["action"], now),
         )
         conn.commit()
@@ -210,8 +220,8 @@ class SkillGate:
 
     def _get_base_level(self, agent: str, operation: str) -> str:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT default_level FROM gate_rules WHERE agent=? AND operation=?", (agent, operation))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("SELECT default_level FROM gate_rules WHERE agent=%s AND operation=%s", (agent, operation))
         row = c.fetchone()
         conn.close()
         if row:
@@ -261,9 +271,11 @@ class SkillGate:
         return self.evaluate(operation, agent, confidence, params)
 
     def approve(self, gate_id: str, approved_by: str, comment: str = "") -> Dict:
+        """人工审批通过：将human_confirm状态的门控记录标记为approved"""
+
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM gate_records WHERE gate_id=?", (gate_id,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("SELECT * FROM gate_records WHERE gate_id=%s", (gate_id,))
         row = c.fetchone()
         if not row:
             conn.close()
@@ -275,7 +287,7 @@ class SkillGate:
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute(
-            "UPDATE gate_records SET status='approved', approved_by=?, approved_at=?, comment=?, resolved_at=? WHERE gate_id=?",
+            "UPDATE gate_records SET status='approved', approved_by=%s, approved_at=%s, comment=%s, resolved_at=%s WHERE gate_id=%s",
             (approved_by, now, comment, now, gate_id),
         )
         conn.commit()
@@ -293,9 +305,11 @@ class SkillGate:
         }
 
     def reject(self, gate_id: str, rejected_by: str, comment: str = "") -> Dict:
+        """人工拒绝操作：将human_confirm状态的门控记录标记为rejected"""
+
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM gate_records WHERE gate_id=?", (gate_id,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("SELECT * FROM gate_records WHERE gate_id=%s", (gate_id,))
         row = c.fetchone()
         if not row:
             conn.close()
@@ -303,7 +317,7 @@ class SkillGate:
 
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute(
-            "UPDATE gate_records SET status='rejected', rejected_by=?, rejected_at=?, comment=?, resolved_at=? WHERE gate_id=?",
+            "UPDATE gate_records SET status='rejected', rejected_by=%s, rejected_at=%s, comment=%s, resolved_at=%s WHERE gate_id=%s",
             (rejected_by, now, comment, now, gate_id),
         )
         conn.commit()
@@ -322,9 +336,9 @@ class SkillGate:
 
     def list_pending(self, agent: str = None) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         if agent:
-            c.execute("SELECT * FROM gate_records WHERE status='human_confirm' AND agent=? ORDER BY created_at DESC", (agent,))
+            c.execute("SELECT * FROM gate_records WHERE status='human_confirm' AND agent=%s ORDER BY created_at DESC", (agent,))
         else:
             c.execute("SELECT * FROM gate_records WHERE status='human_confirm' ORDER BY created_at DESC")
         rows = c.fetchall()
@@ -349,20 +363,20 @@ class SkillGate:
             conditions = []
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        c.execute("SELECT id FROM gate_rules WHERE agent=? AND operation=?", (agent, operation))
+        c.execute("SELECT id FROM gate_rules WHERE agent=%s AND operation=%s", (agent, operation))
         existing = c.fetchone()
 
         if existing:
             c.execute(
-                "UPDATE gate_rules SET default_level=?, conditions=?, description=?, updated_at=? WHERE agent=? AND operation=?",
+                "UPDATE gate_rules SET default_level=%s, conditions=%s, description=%s, updated_at=%s WHERE agent=%s AND operation=%s",
                 (default_level, json.dumps(conditions, ensure_ascii=False), description, now, agent, operation),
             )
         else:
             c.execute(
-                "INSERT INTO gate_rules (agent, operation, default_level, conditions, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO gate_rules (agent, operation, default_level, conditions, description, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (agent, operation, default_level, json.dumps(conditions, ensure_ascii=False), description, now, now),
             )
 
@@ -383,7 +397,7 @@ class SkillGate:
 
     def get_stats(self) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
 
         c.execute("SELECT COUNT(*) as total FROM gate_records")
         total = c.fetchone()["total"]

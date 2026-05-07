@@ -1,13 +1,18 @@
 import json
 import os
 import sys
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import subprocess
 import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_data.db")
+_PG_HOST = os.environ.get("PG_HOST", "127.0.0.1")
+_PG_PORT = int(os.environ.get("PG_PORT", "5432"))
+_PG_USER = os.environ.get("PG_USER", "GodyChang")
+_PG_PASS = os.environ.get("PG_PASSWORD", "")
+_PG_DB = os.environ.get("PG_DATABASE", "aims")
 
 MCP_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "mcporter.json")
 
@@ -36,6 +41,7 @@ QDRANT_CONFIG = {
     "port": int(os.environ.get("QDRANT_PORT", "6333")),
 }
 
+# MCP工具注册表：按数据源分类（mysql/redis/milvus/qdrant/ecommerce/social_media），含风险等级
 MCP_TOOL_REGISTRY = {
     "mysql": {
         "tools": {
@@ -220,10 +226,10 @@ MCP_TOOL_REGISTRY = {
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
+    import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
     c.execute("""CREATE TABLE IF NOT EXISTS mcp_call_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         server_name TEXT,
         tool_name TEXT,
         params TEXT,
@@ -247,12 +253,12 @@ def init_db():
 
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
     return conn
 
 
 class MySQLAdapter:
+    """MySQL适配器：提供查询/写入/表结构操作，连接不可用时降级为SQLite"""
     def __init__(self, config: Dict = None):
         self.config = config or MYSQL_CONFIG
         self.connection = None
@@ -330,6 +336,7 @@ class MySQLAdapter:
 
 
 class RedisAdapter:
+    """Redis适配器：提供键值/哈希/列表/计数器操作，支持TTL和JSON序列化"""
     def __init__(self, config: Dict = None):
         self.config = config or REDIS_CONFIG
         self.client = None
@@ -502,6 +509,7 @@ class RedisAdapter:
 
 
 class MilvusAdapter:
+    """Milvus向量数据库适配器：向量搜索/插入/集合管理，支持降级模式"""
     def __init__(self, config: Dict = None):
         self.config = config or MILVUS_CONFIG
         self.client = None
@@ -578,6 +586,7 @@ class MilvusAdapter:
 
 
 class QdrantAdapter:
+    """Qdrant向量数据库适配器：向量搜索/集合列表，支持降级模式"""
     def __init__(self, config: Dict = None):
         self.config = config or QDRANT_CONFIG
         self.client = None
@@ -627,6 +636,7 @@ class QdrantAdapter:
 
 
 class EcommercePlatformAdapter:
+    """电商平台适配器：对接淘宝/京东/拼多多API，未配置时返回模拟数据"""
     def __init__(self):
         self.platforms = {
             "taobao": {"name": "淘宝/天猫", "base_url": "https://eco.taobao.com/router/rest", "app_key": os.environ.get("TAOBAO_APP_KEY", ""), "app_secret": os.environ.get("TAOBAO_APP_SECRET", "")},
@@ -672,6 +682,7 @@ class EcommercePlatformAdapter:
 
 
 class SocialMediaAdapter:
+    """社媒平台适配器：对接小红书/抖音/微信API，支持内容发布/数据分析/评论获取"""
     def __init__(self):
         self.platforms = {
             "xhs": {"name": "小红书", "app_key": os.environ.get("XHS_APP_KEY", ""), "app_secret": os.environ.get("XHS_APP_SECRET", "")},
@@ -703,10 +714,14 @@ class SocialMediaAdapter:
 
 
 class MCPFourStageProtocol:
+    """MCP四阶段协议：意图识别 → 能力协商 → 标准化调用 → 执行反馈"""
+
     def __init__(self, framework):
         self.framework = framework
 
     def process(self, user_intent: str, context: Dict = None) -> Dict:
+        """四阶段协议主流程：意图→协商→调用→反馈，串联完整MCP调用链路"""
+
         if context is None:
             context = {}
 
@@ -728,6 +743,8 @@ class MCPFourStageProtocol:
         }
 
     def _stage1_intent_recognition(self, user_intent: str, context: Dict) -> Dict:
+        """阶段1-意图识别：基于关键词匹配检测用户意图（查询商品/订单/广告/发布内容等）"""
+
         intent_map = {
             "query_product": ["查商品", "产品信息", "商品详情", "product", "listing"],
             "query_order": ["查订单", "订单状态", "order", "物流"],
@@ -760,6 +777,8 @@ class MCPFourStageProtocol:
         }
 
     def _stage2_capability_negotiation(self, stage1_result: Dict, context: Dict) -> Dict:
+        """阶段2-能力协商：将意图映射到MCP Server+Tool的组合，确认所需参数和风险等级"""
+
         intent = stage1_result.get("detected_intent", "unknown")
 
         capability_map = {
@@ -791,6 +810,8 @@ class MCPFourStageProtocol:
         }
 
     def _stage3_standardized_call(self, stage2_result: Dict, context: Dict) -> Dict:
+        """阶段3-标准化调用：组装参数，高风险写操作需人工确认"""
+
         if stage2_result.get("status") != "negotiated":
             return {"status": "skipped", "reason": "能力协商未通过"}
 
@@ -821,6 +842,8 @@ class MCPFourStageProtocol:
         }
 
     def _stage4_execution_feedback(self, stage3_result: Dict, context: Dict) -> Dict:
+        """阶段4-执行反馈：调用实际工具并返回执行结果和建议"""
+
         if stage3_result.get("status") not in ("ready", "pending_approval"):
             return {
                 "status": "skipped",
@@ -859,6 +882,7 @@ class MCPFourStageProtocol:
 
 
 class MCPFramework:
+    """MCP框架核心：管理多数据源适配器、四阶段协议、工具调用和健康检查"""
     def __init__(self):
         self.adapters = {
             "mysql": MySQLAdapter(),
@@ -872,6 +896,8 @@ class MCPFramework:
         init_db()
 
     def call_tool(self, tool_name: str, params: Dict) -> Dict:
+        """工具调用入口：按tool_name查找注册表，路由到对应适配器方法，记录调用日志"""
+
         start_time = time.time()
 
         server_name = self._get_server_for_tool(tool_name)
@@ -926,9 +952,9 @@ class MCPFramework:
     def get_call_history(self, limit: int = 50) -> List[Dict]:
         try:
             conn = get_db_connection()
-            c = conn.cursor()
+            import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
             c.execute(
-                "SELECT server_name, tool_name, params, result_summary, status, duration_ms, error_message, called_at FROM mcp_call_logs ORDER BY id DESC LIMIT ?",
+                "SELECT server_name, tool_name, params, result_summary, status, duration_ms, error_message, called_at FROM mcp_call_logs ORDER BY id DESC LIMIT %s",
                 (limit,),
             )
             rows = c.fetchall()
@@ -946,11 +972,11 @@ class MCPFramework:
     def _log_call(self, server_name: str, tool_name: str, params: Dict, result: Dict, duration_ms: int, error: str = ""):
         try:
             conn = get_db_connection()
-            c = conn.cursor()
+            import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             result_summary = json.dumps(result, ensure_ascii=False, default=str)[:500] if result else ""
             c.execute(
-                "INSERT INTO mcp_call_logs (server_name, tool_name, params, result_summary, status, duration_ms, error_message, called_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO mcp_call_logs (server_name, tool_name, params, result_summary, status, duration_ms, error_message, called_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     server_name,
                     tool_name,

@@ -1,8 +1,12 @@
-﻿{
+{
+    "identity":  {
+                     "name":  "AIMS营销助手",
+                     "description":  "AI全员营销系统 - 覆盖电商运营/社媒营销/客服自动化/办公自动化"  // 系统身份标识，用于AI自我认知
+                 },
     "gateway":  {
-                    "mode":  "local",
-                    "port":  18789,
-                    "bind":  "lan",
+                    "mode":  "local",    // 运行模式: local(本地)/remote(远程)
+                    "port":  18789,      // 网关监听端口
+                    "bind":  "lan",      // 绑定地址: lan(局域网)/localhost(本机)
                     "auth":  {
                                  "mode":  "token",
                                  "token":  "${AIMS_GATEWAY_TOKEN}",
@@ -11,11 +15,11 @@
                 },
     "agents":  {
                    "defaults":  {
-                                    "workspace":  "D:/Project/aims/workspace",
-                                    "userTimezone":  "Asia/Shanghai",
+                                    "workspace":  "D:/Project/aims/workspace",  // 默认工作目录
+                                    "userTimezone":  "Asia/Shanghai",          // 用户时区
                                     "model":  {
-                                                  "primary":  "deepseek/deepseek-chat",
-                                                  "fallbacks":  [
+                                                  "primary":  "deepseek/deepseek-chat",  // 主模型
+                                                  "fallbacks":  [                     // 降级备用模型
                                                                     "moonshot/moonshot-v1-128k",
                                                                     "zhipu/glm-4-flash"
                                                                 ]
@@ -181,7 +185,7 @@
                  ],
     "channels":  {
                      "defaults":  {
-                                      "groupPolicy":  "allowlist"
+                                      "groupPolicy":  "allowlist"  // 群聊策略: allowlist(白名单)/open(开放)
                                   },
                      "feishu":  {
                                     "enabled":  true,
@@ -421,7 +425,10 @@
                                                    },
                                    "data-flywheel":  {
                                                          "enabled":  true
-                                                     }
+                                                     },
+                                   "meeting-minutes":  {
+                                                            "enabled":  true
+                                                        }
                                }
                },
     "session":  {
@@ -433,7 +440,58 @@
                               }
                 },
     "cron":  {
-                 "enabled":  true,
-                 "maxConcurrentRuns":  3
+                 "enabled":  true,          // 是否启用定时任务
+                 "maxConcurrentRuns":  3,   // 最大并发执行数
+                 "jobs":  [
+                             {
+                                 "name":  "daily-ai-report",
+                                 "schedule":  "0 9 * * *",
+                                 "agentId":  "office",
+                                 "task":  "生成AI行业日报",
+                                 "description":  "每天9:00推送AI行业日报"
+                             },
+                             {
+                                 "name":  "xhs-daily-publish",
+                                 "schedule":  "0 10 * * *",
+                                 "agentId":  "social-media",
+                                 "task":  "生成并发布小红书种草内容",
+                                 "description":  "每天10:00自动发布小红书种草内容"
+                             },
+                             {
+                                 "name":  "douyin-daily-publish",
+                                 "schedule":  "0 11 * * *",
+                                 "agentId":  "social-media",
+                                 "task":  "生成并发布抖音短视频",
+                                 "description":  "每天11:00自动发布抖音内容"
+                             },
+                             {
+                                 "name":  "video-channel-publish",
+                                 "schedule":  "0 14 * * *",
+                                 "agentId":  "social-media",
+                                 "task":  "生成并发布视频号内容",
+                                 "description":  "每天14:00自动发布视频号内容"
+                             },
+                             {
+                                 "name":  "weekly-report",
+                                 "schedule":  "0 18 * * 5",
+                                 "agentId":  "office",
+                                 "task":  "生成运营周报",
+                                 "description":  "每周五18:00生成运营周报"
+                             },
+                             {
+                                 "name":  "opinion-monitor",
+                                 "schedule":  "*/10 * * * *",
+                                 "agentId":  "social-media",
+                                 "task":  "监控社媒舆情",
+                                 "description":  "每10分钟监控社媒评论舆情"
+                             },
+                             {
+                                 "name":  "team-daily-report",
+                                 "schedule":  "0 8 * * *",
+                                 "agentId":  "office",
+                                 "task":  "生成团队日报",
+                                 "description":  "每天8:00生成团队日报"
+                             }
+                         ]
              }
 }

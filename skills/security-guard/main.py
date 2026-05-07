@@ -1,7 +1,8 @@
 import json
 import os
 import re
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import sys
 import hashlib
 import hmac
@@ -10,8 +11,13 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "security.db")
+_PG_HOST = os.environ.get("PG_HOST", "127.0.0.1")
+_PG_PORT = int(os.environ.get("PG_PORT", "5432"))
+_PG_USER = os.environ.get("PG_USER", "GodyChang")
+_PG_PASS = os.environ.get("PG_PASSWORD", "")
+_PG_DB = os.environ.get("PG_DATABASE", "aims")
 
+# 敏感词分类库：按政治/暴力/色情/赌博/诈骗/毒品/歧视分类
 SENSITIVE_WORDS = {
     "politics": ["政治敏感词1", "政治敏感词2"],
     "violence": ["暴力", "凶杀", "恐怖袭击"],
@@ -22,6 +28,7 @@ SENSITIVE_WORDS = {
     "discrimination": ["种族歧视", "性别歧视"],
 }
 
+# 各平台内容发布规则：标题长度、禁用词、必填字段、图片要求
 PLATFORM_RULES = {
     "taobao": {
         "name": "淘宝/天猫",
@@ -65,27 +72,28 @@ PLATFORM_RULES = {
     },
 }
 
+# Prompt注入检测正则模式库：覆盖指令覆盖/越狱/角色扮演/系统提示泄露等攻击向量
 INJECTION_PATTERNS = [
-    r"(?i)ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
-    r"(?i)forget\s+(everything|all|previous)",
-    r"(?i)you\s+are\s+now\s+a",
-    r"(?i)pretend\s+(to\s+be|you\s+are)",
-    r"(?i)system\s*:\s*",
-    r"(?i)jailbreak",
-    r"(?i)dan\s+mode",
-    r"(?i)developer\s+mode",
-    r"(?i)override\s+(safety|security|rules)",
-    r"(?i)bypass\s+(filter|check|restriction)",
-    r"(?i)reveal\s+(your|the)\s+(prompt|instructions|system)",
-    r"(?i)output\s+your\s+(instructions|prompt|rules)",
+    r"(%si)ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
+    r"(%si)forget\s+(everything|all|previous)",
+    r"(%si)you\s+are\s+now\s+a",
+    r"(%si)pretend\s+(to\s+be|you\s+are)",
+    r"(%si)system\s*:\s*",
+    r"(%si)jailbreak",
+    r"(%si)dan\s+mode",
+    r"(%si)developer\s+mode",
+    r"(%si)override\s+(safety|security|rules)",
+    r"(%si)bypass\s+(filter|check|restriction)",
+    r"(%si)reveal\s+(your|the)\s+(prompt|instructions|system)",
+    r"(%si)output\s+your\s+(instructions|prompt|rules)",
 ]
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
+    import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
     c.execute("""CREATE TABLE IF NOT EXISTS security_audit_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         check_type TEXT NOT NULL,
         input_text TEXT,
         result TEXT,
@@ -94,7 +102,7 @@ def init_db():
         checked_at TEXT NOT NULL
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS credential_store (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         credential_key TEXT UNIQUE NOT NULL,
         credential_hash TEXT NOT NULL,
         credential_type TEXT DEFAULT 'api_key',
@@ -106,7 +114,7 @@ def init_db():
         updated_at TEXT
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS access_control (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         role TEXT NOT NULL,
         resource TEXT NOT NULL,
         action TEXT NOT NULL,
@@ -114,7 +122,7 @@ def init_db():
         created_at TEXT NOT NULL
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS rate_limits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         identifier TEXT NOT NULL,
         endpoint TEXT,
         request_count INTEGER DEFAULT 0,
@@ -128,17 +136,19 @@ def init_db():
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
     return conn
 
 
 class ContentModerator:
+    """内容审核器：敏感词检测 + 平台合规检查"""
     def __init__(self):
         self.sensitive_words = SENSITIVE_WORDS
         self.platform_rules = PLATFORM_RULES
 
     def check_sensitive_words(self, text: str) -> Dict:
+        """扫描文本中的敏感词，按分类聚合风险等级"""
+
         if not text:
             return {"safe": True, "found": [], "categories": [], "risk_level": "low"}
 
@@ -169,6 +179,8 @@ class ContentModerator:
         }
 
     def check_platform_compliance(self, content: Dict, platform: str) -> Dict:
+        """检查内容是否符合目标平台的发布规则（长度/禁用词/必填字段/图片）"""
+
         rules = self.platform_rules.get(platform)
         if not rules:
             return {"compliant": True, "platform": platform, "message": "平台规则未配置，默认通过"}
@@ -227,6 +239,8 @@ class ContentModerator:
         }
 
     def check_content(self, text: str, platform: str = None, content: Dict = None) -> Dict:
+        """综合审核：敏感词检测 + 平台合规，输出风险等级和处理建议"""
+
         sensitive_result = self.check_sensitive_words(text)
 
         platform_result = None
@@ -265,9 +279,9 @@ class ContentModerator:
     def _log_audit(self, check_type: str, input_text: str, result: Dict, risk_level: str):
         try:
             conn = get_db()
-            c = conn.cursor()
+            import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
             c.execute(
-                "INSERT INTO security_audit_logs (check_type, input_text, result, risk_level, details, checked_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO security_audit_logs (check_type, input_text, result, risk_level, details, checked_at) VALUES (%s, %s, %s, %s, %s, %s)",
                 (check_type, input_text, json.dumps(result, ensure_ascii=False, default=str)[:500], risk_level, "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
             )
             conn.commit()
@@ -277,10 +291,13 @@ class ContentModerator:
 
 
 class PromptInjectionDetector:
+    """Prompt注入攻击检测器：通过正则模式匹配识别恶意输入"""
     def __init__(self):
         self.patterns = INJECTION_PATTERNS
 
     def detect(self, text: str) -> Dict:
+        """检测文本是否包含Prompt注入模式，输出匹配详情和风险等级"""
+
         if not text:
             return {"safe": True, "matches": [], "risk_level": "low"}
 
@@ -309,6 +326,7 @@ class PromptInjectionDetector:
         return result
 
     def sanitize(self, text: str) -> Dict:
+        """清洗注入内容：将匹配到的攻击片段替换为[FILTERED]"""
         detection = self.detect(text)
         sanitized = text
 
@@ -330,9 +348,9 @@ class PromptInjectionDetector:
     def _log_audit(self, check_type: str, input_text: str, result: Dict, risk_level: str):
         try:
             conn = get_db()
-            c = conn.cursor()
+            import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
             c.execute(
-                "INSERT INTO security_audit_logs (check_type, input_text, result, risk_level, details, checked_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO security_audit_logs (check_type, input_text, result, risk_level, details, checked_at) VALUES (%s, %s, %s, %s, %s, %s)",
                 (check_type, input_text, json.dumps(result, ensure_ascii=False, default=str)[:500], risk_level, "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
             )
             conn.commit()
@@ -342,12 +360,15 @@ class PromptInjectionDetector:
 
 
 class CredentialManager:
+    """凭证管理器：API密钥的加密存储、验证、轮换管理"""
     def __init__(self):
         self._secret_key = os.environ.get("AIMS_SECRET_KEY", "aims-default-secret-key-change-in-production")
 
     def store_credential(self, key: str, value: str, description: str = "", credential_type: str = "api_key", rotation_days: int = 90) -> Dict:
+        """存储凭证：SHA256哈希 + 过期时间，已存在则自动轮换"""
+
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         value_hash = hashlib.sha256(value.encode()).hexdigest()
@@ -355,15 +376,18 @@ class CredentialManager:
 
         try:
             c.execute(
-                "INSERT INTO credential_store (credential_key, credential_hash, credential_type, description, rotation_days, last_rotated, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO credential_store (credential_key, credential_hash, credential_type, description, rotation_days, last_rotated, expires_at, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (key, value_hash, credential_type, description, rotation_days, now, (datetime.now() + __import__("datetime").timedelta(days=rotation_days)).strftime("%Y-%m-%d %H:%M:%S"), now, now),
             )
             conn.commit()
             conn.close()
             return {"success": True, "key": key, "stored": True}
-        except sqlite3.IntegrityError:
+        except Exception as _pg_ie:
+            conn.rollback()
+            if 'Duplicate' not in str(_pg_ie) and 'unique' not in str(_pg_ie).lower():
+                raise
             c.execute(
-                "UPDATE credential_store SET credential_hash=?, rotation_days=?, last_rotated=?, expires_at=?, updated_at=? WHERE credential_key=?",
+                "UPDATE credential_store SET credential_hash=%s, rotation_days=%s, last_rotated=%s, expires_at=%s, updated_at=%s WHERE credential_key=%s",
                 (value_hash, rotation_days, now, (datetime.now() + __import__("datetime").timedelta(days=rotation_days)).strftime("%Y-%m-%d %H:%M:%S"), now, key),
             )
             conn.commit()
@@ -371,9 +395,10 @@ class CredentialManager:
             return {"success": True, "key": key, "rotated": True}
 
     def verify_credential(self, key: str, value: str) -> Dict:
+        """验证凭证：比对哈希值 + 检查过期状态"""
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT credential_hash, expires_at FROM credential_store WHERE credential_key=?", (key,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("SELECT credential_hash, expires_at FROM credential_store WHERE credential_key=%s", (key,))
         row = c.fetchone()
         conn.close()
 
@@ -393,7 +418,7 @@ class CredentialManager:
 
     def list_credentials(self) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         c.execute("SELECT credential_key, credential_type, description, rotation_days, last_rotated, expires_at FROM credential_store")
         creds = [dict(row) for row in c.fetchall()]
         conn.close()
@@ -411,8 +436,8 @@ class CredentialManager:
 
     def delete_credential(self, key: str) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("DELETE FROM credential_store WHERE credential_key=?", (key,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("DELETE FROM credential_store WHERE credential_key=%s", (key,))
         affected = c.rowcount
         conn.commit()
         conn.close()
@@ -423,15 +448,18 @@ class CredentialManager:
 
 
 class RateLimiter:
+    """滑动窗口限流器：按标识符+接口维度限制请求频率"""
     def __init__(self):
         pass
 
     def check_rate(self, identifier: str, endpoint: str = "default", max_requests: int = 100, window_seconds: int = 60) -> Dict:
+        """检查是否超过限流阈值，窗口过期自动重置计数器"""
+
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now()
 
-        c.execute("SELECT * FROM rate_limits WHERE identifier=? AND endpoint=?", (identifier, endpoint))
+        c.execute("SELECT * FROM rate_limits WHERE identifier=%s AND endpoint=%s", (identifier, endpoint))
         row = c.fetchone()
 
         if row:
@@ -440,7 +468,7 @@ class RateLimiter:
 
             if elapsed > row["window_seconds"]:
                 c.execute(
-                    "UPDATE rate_limits SET request_count=1, window_start=?, max_requests=?, window_seconds=? WHERE identifier=? AND endpoint=?",
+                    "UPDATE rate_limits SET request_count=1, window_start=%s, max_requests=%s, window_seconds=%s WHERE identifier=%s AND endpoint=%s",
                     (now.strftime("%Y-%m-%d %H:%M:%S"), max_requests, window_seconds, identifier, endpoint),
                 )
                 conn.commit()
@@ -458,13 +486,13 @@ class RateLimiter:
                         "limit": row["max_requests"],
                         "current": new_count,
                     }
-                c.execute("UPDATE rate_limits SET request_count=? WHERE identifier=? AND endpoint=?", (new_count, identifier, endpoint))
+                c.execute("UPDATE rate_limits SET request_count=%s WHERE identifier=%s AND endpoint=%s", (new_count, identifier, endpoint))
                 conn.commit()
                 conn.close()
                 return {"allowed": True, "remaining": row["max_requests"] - new_count, "reset_at": (window_start + timedelta(seconds=row["window_seconds"])).strftime("%Y-%m-%d %H:%M:%S")}
         else:
             c.execute(
-                "INSERT INTO rate_limits (identifier, endpoint, request_count, window_start, window_seconds, max_requests) VALUES (?, ?, 1, ?, ?, ?)",
+                "INSERT INTO rate_limits (identifier, endpoint, request_count, window_start, window_seconds, max_requests) VALUES (%s, %s, 1, %s, %s, %s)",
                 (identifier, endpoint, now.strftime("%Y-%m-%d %H:%M:%S"), window_seconds, max_requests),
             )
             conn.commit()
@@ -473,6 +501,7 @@ class RateLimiter:
 
 
 class SecurityGuard:
+    """安全总控：整合内容审核 + 注入检测 + 凭证管理 + 限流，提供一站式安全检查"""
     def __init__(self):
         init_db()
         self.content_moderator = ContentModerator()
@@ -481,6 +510,8 @@ class SecurityGuard:
         self.rate_limiter = RateLimiter()
 
     def full_check(self, text: str, platform: str = None, content: Dict = None, identifier: str = "default") -> Dict:
+        """全量安全检查：内容审核 + 注入检测 + 限流，综合判定是否安全"""
+
         content_result = self.content_moderator.check_content(text, platform, content)
         injection_result = self.injection_detector.detect(text)
         rate_result = self.rate_limiter.check_rate(identifier, "full_check")
@@ -504,15 +535,17 @@ class SecurityGuard:
 
     def get_audit_logs(self, limit: int = 50) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM security_audit_logs ORDER BY checked_at DESC LIMIT ?", (limit,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("SELECT * FROM security_audit_logs ORDER BY checked_at DESC LIMIT %s", (limit,))
         logs = [dict(row) for row in c.fetchall()]
         conn.close()
         return {"success": True, "logs": logs, "total": len(logs)}
 
     def get_security_stats(self) -> Dict:
+        """获取安全审计统计：检查总量/风险分布/凭证过期数量"""
+
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
 
         c.execute("SELECT COUNT(*) as total FROM security_audit_logs")
         total_checks = c.fetchone()["total"]
@@ -526,7 +559,7 @@ class SecurityGuard:
         c.execute("SELECT COUNT(*) as total FROM credential_store")
         total_creds = c.fetchone()["total"]
 
-        c.execute("SELECT COUNT(*) as total FROM credential_store WHERE expires_at < ?", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+        c.execute("SELECT COUNT(*) as total FROM credential_store WHERE expires_at < %s", (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
         expired_creds = c.fetchone()["total"]
 
         conn.close()
@@ -542,6 +575,7 @@ class SecurityGuard:
 
 
 def main():
+    """CLI入口：根据action参数路由到安全检查/注入检测/凭证管理/限流等子模块"""
     input_data = json.loads(sys.stdin.read())
     action = input_data.get("action", "full_check")
     guard = SecurityGuard()

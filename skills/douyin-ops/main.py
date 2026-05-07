@@ -6,7 +6,37 @@ import re
 import sys
 from typing import Dict, List, Optional
 
+import importlib.util
+try:
+    _sp = importlib.util.spec_from_file_location("douyin-ops_dl", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..\data-layer\main.py"))
+    if _sp and _sp.loader:
+        _md = importlib.util.module_from_spec(_sp)
+        sys.modules["douyin-ops_dl"] = _md
+        _sp.loader.exec_module(_md)
+        dou_dl_avail = True
+    else:
+        dou_dl_avail = False
+except Exception:
+    dou_dl_avail = False
+
+def _store_do(title, txt, plat):
+    if not dou_dl_avail:
+        return
+    try:
+        from datetime import datetime as _dt
+        _md.DataManager().insert_record("contents", {
+            "content_id": f"gen-{_dt.now().strftime('%Y%m%d%H%M%S%f')}",
+            "type": "post", "platform": plat,
+            "title": (title or "")[:200], "content": (txt or "")[:2000],
+            "tags": "[]", "status": "generated",
+            "created_at": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+    except Exception:
+        pass
+
+
 # 抖音平台规则
+# 抖音平台规则：时长选项/文本长度/禁用词/敏感引流模式
 PLATFORM_RULES = {
     'duration_options': [15, 30, 60, 90],
     'max_text_length': 1000,
@@ -26,6 +56,7 @@ PLATFORM_RULES = {
 }
 
 # 视频类型模板
+# 视频类型模板：产品展示/直播切片/开箱/剧情/测评，含时长建议和分镜结构
 VIDEO_TEMPLATES = {
     'product': {
         'description': '产品展示视频',
@@ -55,6 +86,7 @@ VIDEO_TEMPLATES = {
 }
 
 # 发布时间建议
+# 最佳发布时间建议：早通勤/午休/下班/睡前
 BEST_TIMES = {
     'morning': ['07:30-09:00', '通勤时间'],
     'noon': ['12:00-13:30', '午休时间'],
@@ -74,6 +106,8 @@ def validate_input(input_data: Dict) -> List[str]:
     return missing_fields
 
 def generate_hook(product_name: str, selling_points: List[str]) -> str:
+    """生成3秒钩子：通过抛出疑问/惊叹/警告快速抓住注意力"""
+
     """生成3秒钩子"""
     hooks = [
         f"家人们！这个{product_name}绝了！",
@@ -87,6 +121,8 @@ def generate_hook(product_name: str, selling_points: List[str]) -> str:
 
 def generate_script(product_name: str, selling_points: List[str], features: List[str],
                     video_type: str, duration: int) -> List[Dict]:
+    """生成分镜脚本：按视频类型和时长选择模板，逐镜定义时间/景别/画面/台词"""
+
     """生成分镜脚本"""
     template = VIDEO_TEMPLATES.get(video_type, VIDEO_TEMPLATES['product'])
     script = []
@@ -180,6 +216,8 @@ def suggest_publish_time(audience: str) -> Dict:
         }
 
 def compliance_check(script: List[Dict], captions: str) -> Dict:
+    """合规检查：禁用词 + 敏感模式（微信号/二维码/电话/价格），用于判断是否需要人工审核"""
+
     """合规检查"""
     issues = []
     all_text = captions + ' '.join([shot['line'] for shot in script])
@@ -200,6 +238,8 @@ def compliance_check(script: List[Dict], captions: str) -> Dict:
     }
 
 def generate_douyin_video(input_data: Dict) -> Dict:
+    """生成抖音视频脚本主流程：校验→钩子→分镜→字幕→标签→发布时间→合规→门控判断"""
+
     """生成抖音视频脚本"""
     # 1. 校验输入
     missing_fields = validate_input(input_data)

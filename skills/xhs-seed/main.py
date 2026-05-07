@@ -8,6 +8,36 @@ import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+import importlib.util
+try:
+    _sp = importlib.util.spec_from_file_location("xhs-seed_dl", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..\data-layer\main.py"))
+    if _sp and _sp.loader:
+        _md = importlib.util.module_from_spec(_sp)
+        sys.modules["xhs-seed_dl"] = _md
+        _sp.loader.exec_module(_md)
+        xhs_dl_avail = True
+    else:
+        xhs_dl_avail = False
+except Exception:
+    xhs_dl_avail = False
+
+def _store_xh(title, txt, plat):
+    if not xhs_dl_avail:
+        return
+    try:
+        from datetime import datetime as _dt
+        _md.DataManager().insert_record("contents", {
+            "content_id": f"gen-{_dt.now().strftime('%Y%m%d%H%M%S%f')}",
+            "type": "post", "platform": plat,
+            "title": (title or "")[:200], "content": (txt or "")[:2000],
+            "tags": "[]", "status": "generated",
+            "created_at": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+    except Exception:
+        pass
+
+
+# 小红书平台规则：标题/内容长度、图片数量、禁用词、敏感引流模式
 PLATFORM_RULES = {
     'title_max_length': 20,
     'content_max_length': 1000,
@@ -30,6 +60,7 @@ PLATFORM_RULES = {
     ],
 }
 
+# 笔记类型模板：产品种草/场景/测评/开箱/教程/对比，含互动率基准
 NOTE_TEMPLATES = {
     'product': {
         'description': '产品种草笔记',
@@ -69,6 +100,7 @@ NOTE_TEMPLATES = {
     },
 }
 
+# 文案语气风格：休闲/专业/幽默/温柔，含对应高频词和emoji密度
 TONE_STYLES = {
     'casual': {
         'prefix': '姐妹们',
@@ -96,6 +128,7 @@ TONE_STYLES = {
     },
 }
 
+# 爆款模板库：按标题结构模式分类，含预估互动率
 VIRAL_TEMPLATES = [
     {
         "id": "pain_point_hook",
@@ -134,6 +167,7 @@ VIRAL_TEMPLATES = [
     },
 ]
 
+# 各品类热门关键词（用于话题标签推荐和内容灵感）
 TREND_KEYWORDS = {
     'beauty': ['早C晚A', '刷酸', '抗老', '敏感肌', '成分党', '平价替代', '国货之光'],
     'fashion': ['穿搭公式', '显瘦', '小个子', '通勤', '氛围感', '老钱风', '多巴胺'],
@@ -143,6 +177,7 @@ TREND_KEYWORDS = {
     'digital': ['桌面搭子', '效率工具', '学生党', '平价好物', '办公神器', '降噪'],
 }
 
+# 互动预测权重因子：标题25% + 内容20% + 图片20% + 发布时间15% + 标签10% + 互动引导10%
 ENGAGEMENT_PREDICTION_FACTORS = {
     'title_score': 0.25,
     'content_score': 0.20,
@@ -152,6 +187,7 @@ ENGAGEMENT_PREDICTION_FACTORS = {
     'interaction_score': 0.10,
 }
 
+# 小红书运营知识库：算法机制/标题公式/内容日历/合规红线
 XHS_KNOWLEDGE_BASE = [
     {
         "id": "xhs_algorithm",
@@ -192,6 +228,8 @@ def validate_input(input_data: Dict) -> Dict:
 
 def predict_engagement(title: str, content: str, note_type: str, post_time: str = "",
                        hashtags: List[str] = None, image_count: int = 4) -> Dict:
+    """互动率预测模型：加权计算标题/内容/图片/发布时间/标签/互动引导分"""
+
     factors = ENGAGEMENT_PREDICTION_FACTORS
 
     title_score = 0.5
@@ -298,6 +336,8 @@ def _generate_engagement_tips(title: float, content: float, image: float, timing
 
 def generate_content_calendar(product_name: str, category: str, selling_points: List[str],
                                weeks: int = 4) -> Dict:
+    """按周生成内容日历：每天一种内容类型，循环覆盖教程/种草/对比/场景/开箱/测评"""
+
     calendar = []
     content_types = list(NOTE_TEMPLATES.keys())
     base_date = datetime.now()
@@ -345,6 +385,8 @@ def generate_content_calendar(product_name: str, category: str, selling_points: 
 
 
 def generate_trend_analysis(category: str, product_name: str) -> Dict:
+    """趋势分析：结合类目热词和季节性关键词生成内容角度建议"""
+
     category_trends = TREND_KEYWORDS.get(category, [])
     hot_keywords = category_trends[:5] if category_trends else []
 
@@ -380,6 +422,8 @@ def generate_trend_analysis(category: str, product_name: str) -> Dict:
 
 def generate_titles(product_name: str, selling_points: List[str], audience: str,
                     note_type: str = "product", tone: str = "casual") -> Dict:
+    """生成标题候选：结合爆款模板和八种标题公式（痛点/身份/对比/情感/发现/测评/后悔型）"""
+
     titles = []
     style = TONE_STYLES.get(tone, TONE_STYLES['casual'])
 
@@ -440,6 +484,8 @@ def generate_hashtags(product_name: str, category: str, selling_points: List[str
 
 def generate_content(product_name: str, selling_points: List[str], features: List[str],
                      note_type: str, tone: str, audience: str = "") -> Dict:
+    """生成笔记正文：按类型（产品/教程/对比/场景）分段组装内容"""
+
     style = TONE_STYLES.get(tone, TONE_STYLES['casual'])
     template = NOTE_TEMPLATES.get(note_type, NOTE_TEMPLATES['product'])
 
@@ -484,6 +530,8 @@ def generate_content(product_name: str, selling_points: List[str], features: Lis
 
 
 def compliance_check(content: str, titles: List[Dict]) -> Dict:
+    """合规检查：禁用词 + 敏感引流模式 + 内容长度限制"""
+
     issues = []
     severity_map = {"high": [], "medium": [], "low": []}
 
@@ -520,6 +568,7 @@ def compliance_check(content: str, titles: List[Dict]) -> Dict:
 
 
 def generate_xhs_note(input_data: Dict) -> Dict:
+    """生成小红书笔记主流程：校验 → 生成标题/内容/标签 → 趋势分析 → 合规检查 → 互动预测"""
     validation = validate_input(input_data)
     if validation["errors"]:
         return {"error": "输入不完整", "missing_fields": validation["errors"], "warnings": validation["warnings"]}

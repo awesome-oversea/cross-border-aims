@@ -1,15 +1,21 @@
 import json
 import os
 import re
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import sys
 import time
 import threading
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Callable
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cron_engine.db")
+_PG_HOST = os.environ.get("PG_HOST", "127.0.0.1")
+_PG_PORT = int(os.environ.get("PG_PORT", "5432"))
+_PG_USER = os.environ.get("PG_USER", "GodyChang")
+_PG_PASS = os.environ.get("PG_PASSWORD", "")
+_PG_DB = os.environ.get("PG_DATABASE", "aims")
 
+# 预置定时任务列表：AI日报/小红书发布/抖音发布/视频号发布/周报/舆情监控/Token刷新/团队日报
 CRON_JOBS = [
     {
         "name": "daily-ai-report",
@@ -119,8 +125,10 @@ CRON_JOBS = [
 
 
 class CronParser:
+    """Cron表达式解析器：支持标准5字段格式，提供解析/匹配/下次执行时间/可读化"""
     @staticmethod
     def parse(expr: str) -> Dict:
+        """解析cron表达式为结构化字段（minute/hour/day_of_month/month/day_of_week）"""
         parts = expr.strip().split()
         if len(parts) != 5:
             return {"valid": False, "error": f"cron表达式必须包含5个字段，当前{len(parts)}个"}
@@ -180,6 +188,8 @@ class CronParser:
 
     @staticmethod
     def matches(expr: str, dt: datetime) -> bool:
+        """判断给定时间是否匹配cron表达式"""
+
         parsed = CronParser.parse(expr)
         if not parsed["valid"]:
             return False
@@ -195,6 +205,8 @@ class CronParser:
 
     @staticmethod
     def next_run(expr: str, after: datetime = None) -> Optional[datetime]:
+        """计算cron表达式下次执行时间（向后搜索最多1年）"""
+
         if after is None:
             after = datetime.now()
 
@@ -207,6 +219,8 @@ class CronParser:
 
     @staticmethod
     def humanize(expr: str) -> str:
+        """将cron表达式转换为可读的中文描述（如"每天9:00"）"""
+
         parsed = CronParser.parse(expr)
         if not parsed["valid"]:
             return f"无效表达式: {expr}"
@@ -240,10 +254,10 @@ class CronParser:
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
+    import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
     c.execute("""CREATE TABLE IF NOT EXISTS cron_jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT UNIQUE,
         display_name TEXT,
         cron_expr TEXT,
@@ -261,7 +275,7 @@ def init_db():
         updated_at TEXT
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS cron_executions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         job_name TEXT,
         execution_id TEXT,
         status TEXT DEFAULT 'pending',
@@ -285,12 +299,12 @@ def init_db():
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(host=_PG_HOST, port=_PG_PORT, user=_PG_USER, password=_PG_PASS, dbname=_PG_DB)
     return conn
 
 
 class CronExecutor:
+    """Cron任务执行器：通过skill_registry将定时任务分发给对应技能处理器"""
     def __init__(self):
         self.skill_registry = self._build_skill_registry()
 
@@ -305,15 +319,17 @@ class CronExecutor:
         }
 
     def execute(self, job: Dict) -> Dict:
+        """执行单个定时任务：记录执行日志、调用对应skill处理器、返回执行结果和耗时"""
+
         execution_id = f"exec-{datetime.now().strftime('%Y%m%d%H%M%S')}-{hash(job['name']) % 10000:04d}"
         start_time = time.time()
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         c.execute(
-            "INSERT INTO cron_executions (job_name, execution_id, status, started_at, trigger_type) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO cron_executions (job_name, execution_id, status, started_at, trigger_type) VALUES (%s, %s, %s, %s, %s)",
             (job["name"], execution_id, "running", now, "cron"),
         )
         conn.commit()
@@ -337,7 +353,7 @@ class CronExecutor:
 
             duration = int((time.time() - start_time) * 1000)
             c.execute(
-                "UPDATE cron_executions SET status=?, completed_at=?, duration_ms=?, result=? WHERE execution_id=?",
+                "UPDATE cron_executions SET status=%s, completed_at=%s, duration_ms=%s, result=%s WHERE execution_id=%s",
                 ("success", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), duration, json.dumps(result, ensure_ascii=False), execution_id),
             )
             conn.commit()
@@ -354,7 +370,7 @@ class CronExecutor:
         except Exception as e:
             duration = int((time.time() - start_time) * 1000)
             c.execute(
-                "UPDATE cron_executions SET status=?, completed_at=?, duration_ms=?, error_message=? WHERE execution_id=?",
+                "UPDATE cron_executions SET status=%s, completed_at=%s, duration_ms=%s, error_message=%s WHERE execution_id=%s",
                 ("failed", datetime.now().strftime("%Y-%m-%d %H:%M:%S"), duration, str(e), execution_id),
             )
             conn.commit()
@@ -427,6 +443,8 @@ class CronExecutor:
 
 
 class CronEngine:
+    """Cron引擎核心：任务管理（增删改查）+ 守护线程（周期性检查并执行）+ 统计"""
+
     def __init__(self):
         init_db()
         self.executor = CronExecutor()
@@ -434,19 +452,21 @@ class CronEngine:
         self._thread = None
 
     def init_builtin_jobs(self) -> Dict:
+        """初始化预置定时任务到数据库，已存在则更新"""
+
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         created = 0
         updated = 0
 
         for job in CRON_JOBS:
-            c.execute("SELECT id FROM cron_jobs WHERE name=?", (job["name"],))
+            c.execute("SELECT id FROM cron_jobs WHERE name=%s", (job["name"],))
             existing = c.fetchone()
 
             if existing:
                 c.execute(
-                    "UPDATE cron_jobs SET display_name=?, cron_expr=?, description=?, agent=?, skill=?, action=?, params=?, channel=?, target=?, enabled=?, updated_at=? WHERE name=?",
+                    "UPDATE cron_jobs SET display_name=%s, cron_expr=%s, description=%s, agent=%s, skill=%s, action=%s, params=%s, channel=%s, target=%s, enabled=%s, updated_at=%s WHERE name=%s",
                     (
                         job["display_name"],
                         job["cron_expr"],
@@ -465,7 +485,7 @@ class CronEngine:
                 updated += 1
             else:
                 c.execute(
-                    "INSERT INTO cron_jobs (name, display_name, cron_expr, description, agent, skill, action, params, channel, target, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO cron_jobs (name, display_name, cron_expr, description, agent, skill, action, params, channel, target, enabled, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         job["name"],
                         job["display_name"],
@@ -490,7 +510,7 @@ class CronEngine:
 
     def list_jobs(self) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         c.execute("SELECT * FROM cron_jobs ORDER BY name")
         jobs = []
         for row in c.fetchall():
@@ -506,8 +526,8 @@ class CronEngine:
 
     def get_job(self, name: str) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM cron_jobs WHERE name=?", (name,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("SELECT * FROM cron_jobs WHERE name=%s", (name,))
         row = c.fetchone()
         conn.close()
         if not row:
@@ -522,8 +542,8 @@ class CronEngine:
 
     def toggle_job(self, name: str, enabled: bool) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("UPDATE cron_jobs SET enabled=?, updated_at=? WHERE name=?", (1 if enabled else 0, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), name))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("UPDATE cron_jobs SET enabled=%s, updated_at=%s WHERE name=%s", (1 if enabled else 0, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), name))
         affected = c.rowcount
         conn.commit()
         conn.close()
@@ -548,12 +568,12 @@ class CronEngine:
             return {"success": False, "error": f"cron表达式无效: {parsed['error']}"}
 
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
             c.execute(
-                "INSERT INTO cron_jobs (name, display_name, cron_expr, description, agent, skill, action, params, channel, target, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO cron_jobs (name, display_name, cron_expr, description, agent, skill, action, params, channel, target, enabled, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     job_config["name"],
                     job_config.get("display_name", job_config["name"]),
@@ -573,14 +593,16 @@ class CronEngine:
             conn.commit()
             conn.close()
             return {"success": True, "name": job_config["name"]}
-        except sqlite3.IntegrityError:
+        except Exception as _pg_ie:
+            if 'Duplicate' not in str(_pg_ie) and 'unique' not in str(_pg_ie).lower():
+                raise
             conn.close()
             return {"success": False, "error": f"任务 {job_config['name']} 已存在"}
 
     def delete_job(self, name: str) -> Dict:
         conn = get_db()
-        c = conn.cursor()
-        c.execute("DELETE FROM cron_jobs WHERE name=?", (name,))
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
+        c.execute("DELETE FROM cron_jobs WHERE name=%s", (name,))
         affected = c.rowcount
         conn.commit()
         conn.close()
@@ -588,18 +610,18 @@ class CronEngine:
 
     def get_executions(self, job_name: str = None, limit: int = 20) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         if job_name:
-            c.execute("SELECT * FROM cron_executions WHERE job_name=? ORDER BY started_at DESC LIMIT ?", (job_name, limit))
+            c.execute("SELECT * FROM cron_executions WHERE job_name=%s ORDER BY started_at DESC LIMIT %s", (job_name, limit))
         else:
-            c.execute("SELECT * FROM cron_executions ORDER BY started_at DESC LIMIT ?", (limit,))
+            c.execute("SELECT * FROM cron_executions ORDER BY started_at DESC LIMIT %s", (limit,))
         executions = [dict(row) for row in c.fetchall()]
         conn.close()
         return {"success": True, "executions": executions, "total": len(executions)}
 
     def get_stats(self) -> Dict:
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
 
         c.execute("SELECT COUNT(*) as total FROM cron_jobs")
         total_jobs = c.fetchone()["total"]
@@ -634,9 +656,11 @@ class CronEngine:
         }
 
     def check_and_execute(self) -> Dict:
+        """检查所有启用的定时任务，匹配当前时间的任务立即执行"""
+
         now = datetime.now()
         conn = get_db()
-        c = conn.cursor()
+        import psycopg2.extras as _pg_e; c = conn.cursor(cursor_factory=_pg_e.RealDictCursor)
         c.execute("SELECT * FROM cron_jobs WHERE enabled=1")
         jobs = [dict(row) for row in c.fetchall()]
         conn.close()
@@ -653,6 +677,8 @@ class CronEngine:
         return {"success": True, "checked_at": now.strftime("%Y-%m-%d %H:%M:%S"), "triggered_count": len(triggered), "triggered": triggered}
 
     def start_daemon(self, interval_seconds: int = 60):
+        """启动守护线程：每隔interval_seconds秒检查一次定时任务"""
+
         if self._running:
             return {"success": False, "error": "守护线程已在运行"}
 

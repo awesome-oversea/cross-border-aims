@@ -6,10 +6,36 @@ import os
 import re
 import sys
 from typing import Any, Dict, List, Optional, Tuple
+import hashlib, random
+
+_EMBED_CACHE = {}
+def _embed(text: str, dim: int = 768) -> list:
+    if text in _EMBED_CACHE:
+        return _EMBED_CACHE[text]
+    try:
+        import json, urllib.request
+        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        data = json.dumps({"model": "nomic-embed-text", "prompt": text}).encode()
+        req = urllib.request.Request(f"{host}/api/embeddings", data=data, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            vec = json.loads(resp.read()).get("embedding")
+            if vec and len(vec) == dim:
+                _EMBED_CACHE[text] = vec
+                return vec
+    except Exception:
+        pass
+    h = hashlib.sha256(text.encode('utf-8')).digest()
+    rng = random.Random(h)
+    vec = [rng.random() for _ in range(dim)]
+    norm = sum(x*x for x in vec) ** 0.5
+    vec = [x/norm for x in vec]
+    _EMBED_CACHE[text] = vec
+    return vec
 
 MILVUS_HOST = os.environ.get("MILVUS_HOST", "localhost")
 MILVUS_PORT = int(os.environ.get("MILVUS_PORT", "19530"))
 
+# 中文极限词/禁用词列表：广告法违禁词 + 绝对化用语 + 虚假宣传词
 LIMIT_WORDS_CN = [
     '最', '顶级', '第一', '唯一', '首选', '极致', '完美',
     '国家级', '世界级', '全国第一', '全网第一', '销量第一', '冠军',
@@ -19,12 +45,14 @@ LIMIT_WORDS_CN = [
     '秒杀', '抢爆', '卖疯了', '抢购', '甩卖', '清仓', '特价',
 ]
 
+# 英文极限词列表：Amazon等平台禁止的夸张/保证性用语
 LIMIT_WORDS_EN = [
     'best', 'top', 'only', 'guarantee', 'perfect', 'miracle', 'cure',
     '100%', 'forever', 'ultimate', 'number one', '#1', 'unbeatable',
     'revolutionary', 'breakthrough', 'risk-free', 'proven', 'instant',
 ]
 
+# 平台Listing规则：Amazon多站点/淘宝/京东/拼多多/Shopee/Lazada的标题长度/描述限制/禁用词
 PLATFORM_RULES = {
     'amazon': {
         'title_max_length': 200,
@@ -127,6 +155,7 @@ PLATFORM_RULES = {
     },
 }
 
+# 类目合规规则：电子产品/服装/食品/美妆/玩具/家居的认证要求、禁止声明和必要披露
 CATEGORY_COMPLIANCE_RULES = {
     'electronics': {
         'required_certifications': ['CE', 'FCC', 'RoHS'],
@@ -160,6 +189,7 @@ CATEGORY_COMPLIANCE_RULES = {
     },
 }
 
+# SEO关键词权重策略：Amazon/淘宝的标题/描述/后端关键词权重配置
 SEO_KEYWORD_STRATEGIES = {
     'amazon': {
         'title_weight': 0.35,
@@ -177,6 +207,7 @@ SEO_KEYWORD_STRATEGIES = {
     },
 }
 
+# Listing优化RAG知识库：标题/五点/关键词/合规/A-B测试/长尾词策略
 RAG_KNOWLEDGE_BASE = [
     {
         "id": "amazon_title_guide",
@@ -231,6 +262,8 @@ RAG_KNOWLEDGE_BASE = [
 
 
 class RAGRetriever:
+    """RAG检索器：优先Milvus向量搜索，不可用时降级为模拟文本匹配"""
+
     def __init__(self):
         self.use_simulated = True
         self.client = None
@@ -315,6 +348,8 @@ def get_platform_key(platform: str, site: str = "") -> str:
 def generate_title(product_name: str, selling_points: List[str], platform: str, site: str,
                    brand: str = "", model: str = "", color: str = "", material: str = "",
                    size: str = "") -> Dict:
+    """按平台规则生成Listing标题：Amazon用Brand+Model+Feature格式，淘宝用卖点堆叠格式"""
+
     rules = PLATFORM_RULES.get(platform, PLATFORM_RULES['amazon'])
     max_len = rules['title_max_length']
 
@@ -398,6 +433,8 @@ def _generate_ab_title(product_name: str, selling_points: List[str], platform: s
 
 def generate_bullet_points(selling_points: List[str], features: List[str], specs: Dict,
                            platform: str, material: str = "", audience: str = "") -> Dict:
+    """生成五点描述：Feature-to-Benefit转换，按平台前缀格式输出"""
+
     rules = PLATFORM_RULES.get(platform, PLATFORM_RULES['amazon'])
     max_bullets = rules['bullet_points']
     max_len = rules['bullet_max_length']
@@ -462,6 +499,8 @@ def _feature_to_benefit(feature: str, audience: str = "") -> str:
 
 def generate_search_keywords(product_name: str, selling_points: List[str], category: str,
                              platform: str, audience: str = "", use_cases: List[str] = None) -> Dict:
+    """生成搜索关键词：核心词+类目词+长尾词组合，按平台长度限制裁剪"""
+
     rules = PLATFORM_RULES.get(platform, PLATFORM_RULES['amazon'])
     max_keywords = rules.get('keyword_max', 250)
 
@@ -520,6 +559,8 @@ def generate_search_keywords(product_name: str, selling_points: List[str], categ
 def generate_description(product_name: str, selling_points: List[str], features: List[str],
                          material: str, specs: Dict, platform: str, brand: str = "",
                          audience: str = "") -> Dict:
+    """按平台格式生成Listing长描述：Amazon用Discover风格，淘宝用卖点清单风格"""
+
     rules = PLATFORM_RULES.get(platform, PLATFORM_RULES['amazon'])
     max_len = rules['description_max_length']
 
@@ -590,6 +631,8 @@ def generate_description(product_name: str, selling_points: List[str], features:
 
 def compliance_check(title: str, bullet_points: List[str], description: str,
                      platform: str, category: str = "") -> Dict:
+    """合规检查：禁用词 + 类目禁止声明 + 医疗功效声明 + 侵权对比声明，三级严重度分级"""
+
     rules = PLATFORM_RULES.get(platform, PLATFORM_RULES['amazon'])
     forbidden_words = rules['forbidden_words']
     issues = []
@@ -658,6 +701,8 @@ def compliance_check(title: str, bullet_points: List[str], description: str,
 
 
 def calculate_confidence(compliance: Dict, input_data: Dict, rag_results: List[Dict]) -> float:
+    """置信度评分：合规问题扣分 + 输入完整度扣分 + RAG覆盖度加分，最终归一到0-100"""
+
     score = 100.0
     if compliance["high_count"] > 0:
         score -= compliance["high_count"] * 20
@@ -679,6 +724,8 @@ def calculate_confidence(compliance: Dict, input_data: Dict, rag_results: List[D
 def generate_optimization_suggestions(title_result: Dict, bullet_result: Dict,
                                       keyword_result: Dict, desc_result: Dict,
                                       compliance: Dict, platform: str) -> List[Dict]:
+    """根据检查结果生成优化建议：合规修复/标题扩展/补充描述/AB测试/关键词扩展"""
+
     suggestions = []
 
     if compliance["high_count"] > 0:
@@ -737,6 +784,8 @@ def generate_optimization_suggestions(title_result: Dict, bullet_result: Dict,
 
 
 def generate_listing(input_data: Dict) -> Dict:
+    """生成Listing主流程：校验→RAG检索→标题/五点/关键词/描述生成→合规检查→置信度评分→优化建议"""
+
     validation = validate_input(input_data)
     if validation["errors"]:
         return {"error": "输入不完整，缺少必填字段", "missing_fields": validation["errors"], "warnings": validation["warnings"]}
