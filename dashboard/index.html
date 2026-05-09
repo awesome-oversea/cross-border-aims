@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIMS — AI 全员营销系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2236;
+  --bg-card-hover: #1f2a42;
+  --border: #2a3550;
+  --border-light: #374361;
+  --text-primary: #e8ecf4;
+  --text-secondary: #8b95ad;
+  --text-muted: #5a6478;
+  --accent-blue: #3b82f6;
+  --accent-blue-dim: rgba(59,130,246,0.15);
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-green-dim: rgba(16,185,129,0.15);
+  --accent-amber: #f59e0b;
+  --accent-amber-dim: rgba(245,158,11,0.15);
+  --accent-red: #ef4444;
+  --accent-red-dim: rgba(239,68,68,0.15);
+  --accent-purple: #8b5cf6;
+  --accent-purple-dim: rgba(139,92,246,0.15);
+  --accent-pink: #ec4899;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+  --font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* === NAV === */
+.nav {
+  position: fixed; top:0; left:0; right:0; z-index:100;
+  background: rgba(10,14,26,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.nav-brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:18px; letter-spacing:-0.5px; }
+.nav-brand .logo {
+  width:36px; height:36px; border-radius:10px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:900; color:#fff;
+}
+.nav-links { display:flex; gap:8px; }
+.nav-links a {
+  color: var(--text-secondary); text-decoration:none; padding:8px 16px;
+  border-radius: var(--radius-sm); font-size:14px; font-weight:500;
+  transition: all 0.2s;
+}
+.nav-links a:hover { color:var(--text-primary); background:var(--bg-card); }
+.nav-status { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--accent-green); }
+.nav-status .dot { width:8px; height:8px; border-radius:50%; background:var(--accent-green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* === HERO === */
+.hero {
+  min-height: 100vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center;
+  padding: 120px 32px 80px;
+  position: relative;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.08), transparent),
+    var(--bg-primary);
+}
+.hero::before {
+  content:''; position:absolute; inset:0;
+  background-image: radial-gradient(rgba(59,130,246,0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black, transparent);
+}
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:6px 16px; border-radius:20px;
+  background: var(--accent-blue-dim); border:1px solid rgba(59,130,246,0.3);
+  color:var(--accent-blue); font-size:13px; font-weight:500;
+  margin-bottom:32px; position:relative; z-index:1;
+}
+.hero h1 {
+  font-size: clamp(40px,6vw,72px); font-weight:900;
+  letter-spacing:-2px; line-height:1.1; margin-bottom:24px;
+  position:relative; z-index:1;
+  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.hero h1 span {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.hero p {
+  font-size:18px; color:var(--text-secondary); max-width:640px;
+  margin-bottom:40px; position:relative; z-index:1; line-height:1.8;
+}
+.hero-actions { display:flex; gap:16px; position:relative; z-index:1; }
+.btn {
+  padding:12px 28px; border-radius:var(--radius-sm);
+  font-size:15px; font-weight:600; cursor:pointer;
+  border:none; transition:all 0.25s; text-decoration:none;
+}
+.btn-primary {
+  background:linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  color:#fff; box-shadow:0 4px 20px rgba(59,130,246,0.3);
+}
+.btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(59,130,246,0.4); }
+.btn-secondary {
+  background:var(--bg-card); color:var(--text-primary);
+  border:1px solid var(--border);
+}
+.btn-secondary:hover { background:var(--bg-card-hover); border-color:var(--border-light); }
+
+/* === STATS BAR === */
+.stats-bar {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:1px;
+  background:var(--border); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+}
+.stat-item {
+  background:var(--bg-secondary); padding:32px 24px; text-align:center;
+}
+.stat-value { font-size:36px; font-weight:900; letter-spacing:-1px; margin-bottom:4px; }
+.stat-value.blue { color:var(--accent-blue); }
+.stat-value.cyan { color:var(--accent-cyan); }
+.stat-value.green { color:var(--accent-green); }
+.stat-value.amber { color:var(--accent-amber); }
+.stat-value.purple { color:var(--accent-purple); }
+.stat-label { font-size:13px; color:var(--text-muted); font-weight:500; }
+
+/* === SECTIONS === */
+.section {
+  padding:100px 32px; max-width:1280px; margin:0 auto;
+}
+.section-header { text-align:center; margin-bottom:64px; }
+.section-header h2 {
+  font-size:36px; font-weight:800; letter-spacing:-1px; margin-bottom:16px;
+}
+.section-header p { color:var(--text-secondary); font-size:16px; max-width:560px; margin:0 auto; }
+.section-tag {
+  display:inline-block; padding:4px 12px; border-radius:4px;
+  font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+  margin-bottom:16px;
+}
+
+/* === ARCHITECTURE === */
+.arch-container {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:40px; overflow-x:auto;
+}
+.arch-layer {
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  margin-bottom:16px; overflow:hidden;
+}
+.arch-layer:last-child { margin-bottom:0; }
+.arch-layer-header {
+  padding:12px 20px; font-weight:700; font-size:14px;
+  display:flex; align-items:center; gap:8px;
+  border-bottom:1px solid var(--border);
+}
+.arch-layer-body { padding:20px; display:flex; flex-wrap:wrap; gap:12px; }
+.arch-node {
+  padding:10px 18px; border-radius:var(--radius-sm);
+  font-size:13px; font-weight:500; border:1px solid var(--border);
+  background:var(--bg-secondary); transition:all 0.2s; cursor:default;
+}
+.arch-node:hover { border-color:var(--accent-blue); background:var(--accent-blue-dim); }
+.arch-node.highlight { border-color:var(--accent-cyan); background:var(--accent-blue-dim); color:var(--accent-cyan); }
+.arch-connector { text-align:center; color:var(--text-muted); font-size:20px; padding:4px 0; }
+
+/* === AGENT CARDS === */
+.agent-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+.agent-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:28px; transition:all 0.3s;
+  position:relative; overflow:hidden;
+}
+.agent-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+}
+.agent-card:hover { border-color:var(--border-light); transform:translateY(-4px); box-shadow:var(--shadow); }
+.agent-card.main::before { background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan)); }
+.agent-card.ecom::before { background:linear-gradient(90deg,var(--accent-amber),var(--accent-red)); }
+.agent-card.social::before { background:linear-gradient(90deg,var(--accent-pink),var(--accent-purple)); }
+.agent-card.cs::before { background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan)); }
+.agent-card.office::before { background:linear-gradient(90deg,var(--accent-purple),var(--accent-blue)); }
+.agent-icon { font-size:28px; margin-bottom:12px; }
+.agent-name { font-size:18px; font-weight:700; margin-bottom:4px; }
+.agent-role { font-size:13px; color:var(--text-muted); margin-bottom:16px; }
+.agent-pipeline { display:flex; gap:6px; flex-wrap:wrap; }
+.pipeline-step {
+  padding:4px 10px; border-radius:4px; font-size:11px; font-weight:600;
+  background:var(--bg-secondary); border:1px solid var(--border); color:var(--text-secondary);
+}
+.agent-skills { margin-top:16px; display:flex; flex-wrap:wrap; gap:6px; }
+.skill-tag {
+  padding:3px 8px; border-radius:4px; font-size:11px;
+  background:var(--accent-blue-dim); color:var(--accent-blue); border:1px solid rgba(59,130,246,0.2);
+}
+
+/* === SKILL TABLE === */
+.skill-sections { display:flex; flex-direction:column; gap:32px; }
+.skill-group h3 {
+  font-size:16px; font-weight:700; margin-bottom:16px;
+  display:flex; align-items:center; gap:8px;
+}
+.skill-group h3 .icon { font-size:20px; }
+.skill-table {
+  width:100%; border-collapse:collapse;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden;
+}
+.skill-table th {
+  text-align:left; padding:12px 16px; font-size:12px;
+  font-weight:600; color:var(--text-muted); text-transform:uppercase;
+  letter-spacing:0.5px; background:var(--bg-secondary);
+  border-bottom:1px solid var(--border);
+}
+.skill-table td {
+  padding:12px 16px; font-size:14px; border-bottom:1px solid var(--border);
+}
+.skill-table tr:last-child td { border-bottom:none; }
+.skill-table tr:hover td { background:var(--bg-card-hover); }
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:11px; font-weight:600;
+}
+.badge-ai { background:var(--accent-purple-dim); color:var(--accent-purple); }
+.badge-auto { background:var(--accent-green-dim); color:var(--accent-green); }
+.badge-gate { background:var(--accent-amber-dim); color:var(--accent-amber); }
+
+/* === GATE FLOW === */
+.gate-flow {
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  padding:40px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); flex-wrap:wrap;
+}
+.gate-box {
+  padding:20px 28px; border-radius:var(--radius-sm); text-align:center;
+  min-width:160px;
+}
+.gate-box.low { background:var(--accent-green-dim); border:1px solid rgba(16,185,129,0.3); }
+.gate-box.medium { background:var(--accent-amber-dim); border:1px solid rgba(245,158,11,0.3); }
+.gate-box.high { background:var(--accent-red-dim); border:1px solid rgba(239,68,68,0.3); }
+.gate-box .label { font-size:13px; font-weight:700; margin-bottom:4px; }
+.gate-box.low .label { color:var(--accent-green); }
+.gate-box.medium .label { color:var(--accent-amber); }
+.gate-box.high .label { color:var(--accent-red); }
+.gate-box .desc { font-size:12px; color:var(--text-secondary); }
+.gate-arrow { color:var(--text-muted); font-size:24px; }
+
+/* === FLYWHEEL === */
+.flywheel {
+  display:grid; grid-template-columns:repeat(6,1fr); gap:12px;
+  padding:40px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius);
+}
+.flywheel-step {
+  text-align:center; padding:24px 12px;
+  border-radius:var(--radius-sm); border:1px solid var(--border);
+  background:var(--bg-secondary); position:relative;
+}
+.flywheel-step .step-icon { font-size:28px; margin-bottom:8px; }
+.flywheel-step .step-name { font-size:13px; font-weight:700; margin-bottom:4px; }
+.flywheel-step .step-desc { font-size:11px; color:var(--text-muted); }
+.flywheel-step::after {
+  content:'→'; position:absolute; right:-14px; top:50%;
+  transform:translateY(-50%); color:var(--accent-blue); font-size:18px; font-weight:700;
+}
+.flywheel-step:last-child::after { content:'↻'; right:-14px; }
+
+/* === MCP SERVERS === */
+.mcp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+.mcp-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:20px; transition:all 0.2s;
+}
+.mcp-card:hover { border-color:var(--accent-cyan); }
+.mcp-card .mcp-name { font-size:15px; font-weight:700; margin-bottom:4px; }
+.mcp-card .mcp-desc { font-size:12px; color:var(--text-muted); margin-bottom:12px; }
+.mcp-card .mcp-tools { display:flex; flex-wrap:wrap; gap:4px; }
+.mcp-tool {
+  padding:2px 6px; border-radius:3px; font-size:10px;
+  background:var(--bg-secondary); color:var(--text-secondary); border:1px solid var(--border);
+}
+
+/* === DATA FLOW === */
+.dataflow {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:40px;
+  font-family:var(--font-mono); font-size:13px; line-height:2;
+  overflow-x:auto; white-space:pre; color:var(--text-secondary);
+}
+.dataflow .highlight { color:var(--accent-cyan); }
+.dataflow .agent { color:var(--accent-amber); }
+.dataflow .skill { color:var(--accent-green); }
+.dataflow .mcp { color:var(--accent-purple); }
+.dataflow .arrow { color:var(--accent-blue); }
+
+/* === TECH STACK === */
+.tech-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; }
+.tech-category {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px;
+}
+.tech-category h3 { font-size:16px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.tech-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 0; border-bottom:1px solid var(--border);
+}
+.tech-item:last-child { border-bottom:none; }
+.tech-item .name { font-size:14px; font-weight:500; }
+.tech-item .value { font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+
+/* === ROADMAP === */
+.roadmap { display:flex; flex-direction:column; gap:0; position:relative; padding-left:40px; }
+.roadmap::before {
+  content:''; position:absolute; left:15px; top:0; bottom:0;
+  width:2px; background:var(--border);
+}
+.roadmap-item {
+  position:relative; padding:20px 24px; margin-bottom:8px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); transition:all 0.2s;
+}
+.roadmap-item::before {
+  content:''; position:absolute; left:-33px; top:24px;
+  width:12px; height:12px; border-radius:50%;
+  border:2px solid var(--border); background:var(--bg-primary);
+}
+.roadmap-item.done::before { border-color:var(--accent-green); background:var(--accent-green); }
+.roadmap-item.current::before { border-color:var(--accent-blue); background:var(--accent-blue); animation:pulse 2s infinite; }
+.roadmap-item .phase { font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:4px; }
+.roadmap-item .title { font-size:16px; font-weight:700; }
+.roadmap-item.done .title { color:var(--accent-green); }
+.roadmap-item.current .title { color:var(--accent-blue); }
+.roadmap-item .desc { font-size:13px; color:var(--text-secondary); margin-top:4px; }
+
+/* === FOOTER === */
+.footer {
+  border-top:1px solid var(--border); padding:40px 32px;
+  text-align:center; color:var(--text-muted); font-size:13px;
+}
+.footer a { color:var(--accent-blue); text-decoration:none; }
+
+/* === RESPONSIVE === */
+@media(max-width:768px) {
+  .nav-links { display:none; }
+  .stats-bar { grid-template-columns:repeat(2,1fr); }
+  .flywheel { grid-template-columns:repeat(2,1fr); }
+  .flywheel-step::after { display:none; }
+  .hero h1 { font-size:32px; }
+  .section { padding:60px 16px; }
+  .gate-flow { flex-direction:column; }
+  .gate-arrow { transform:rotate(90deg); }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="logo">A</div>
+    AIMS
+  </div>
+  <div class="nav-links">
+    <a href="#architecture">架构</a>
+    <a href="#agents">Agent</a>
+    <a href="#skills">技能</a>
+    <a href="#mcp">MCP</a>
+    <a href="#tech">技术栈</a>
+    <a href="#roadmap">路线图</a>
+  </div>
+  <div class="nav-status">
+    <div class="dot"></div>
+    System Online
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🚀 Open Source · Cross-Border E-Commerce · AI-Native</div>
+  <h1>AI 全员营销系统<br><span>AIMS</span></h1>
+  <p>面向跨境电商的 AI 驱动一体化营销平台<br>让 10 人团队拥有 50 人的运营能力</p>
+  <div class="hero-actions">
+    <a href="#architecture" class="btn btn-primary">查看架构</a>
+    <a href="#skills" class="btn btn-secondary">30+ 技能清单</a>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-value blue">5</div>
+    <div class="stat-label">AI Agent</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value cyan">30+</div>
+    <div class="stat-label">业务技能</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value green">13</div>
+    <div class="stat-label">MCP Server</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value amber">6</div>
+    <div class="stat-label">电商平台</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value purple">3</div>
+    <div class="stat-label">部署环境</div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE -->
+<section class="section" id="architecture">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-blue-dim);color:var(--accent-blue);">SYSTEM DESIGN</div>
+    <h2>系统架构</h2>
+    <p>五层架构，从通道接入到数据闭环，每一层职责清晰、可独立演进</p>
+  </div>
+  <div class="arch-container">
+    <div class="arch-layer">
+      <div class="arch-layer-header" style="background:var(--accent-purple-dim);color:var(--accent-purple);">📡 通道层 Channel Layer</div>
+      <div class="arch-layer-body">
+        <div class="arch-node">飞书 · 电商群</div>
+        <div class="arch-node">飞书 · 社媒群</div>
+        <div class="arch-node highlight">企业微信 · 客服</div>
+        <div class="arch-node">钉钉</div>
+        <div class="arch-node">Telegram</div>
+        <div class="arch-node">WhatsApp</div>
+      </div>
+    </div>
+    <div class="arch-connector">▼</div>
+    <div class="arch-layer">
+      <div class="arch-layer-header" style="background:var(--accent-blue-dim);color:var(--accent-blue);">🛡️ 网关层 Gateway Layer</div>
+      <div class="arch-layer-body">
+        <div class="arch-node highlight">OpenClaw Engine</div>
+        <div class="arch-node">Token Auth</div>
+        <div class="arch-node">Session 管理</div>
+        <div class="arch-node">路由分发</div>
+        <div class="arch-node">心跳检测</div>
+      </div>
+    </div>
+    <div class="arch-connector">▼</div>
+    <div class="arch-layer">
+      <div class="arch-layer-header" style="background:var(--accent-amber-dim);color:var(--accent-amber);">🤖 Agent 协同层 Multi-Agent Layer</div>
+      <div class="arch-layer-body">
+        <div class="arch-node highlight">Main 总控路由</div>
+        <div class="arch-node">Ecommerce 电商运营</div>
+        <div class="arch-node">Social 社媒营销</div>
+        <div class="arch-node">CS 客服售后</div>
+        <div class="arch-node">Office 办公自动化</div>
+        <div class="arch-node" style="border-color:var(--accent-green);color:var(--accent-green);">感知→决策→执行→记忆</div>
+      </div>
+    </div>
+    <div class="arch-connector">▼</div>
+    <div class="arch-layer">
+      <div class="arch-layer-header" style="background:var(--accent-green-dim);color:var(--accent-green);">⚡ 技能层 Skill Layer</div>
+      <div class="arch-layer-body">
+        <div class="arch-node">listing-gen</div>
+        <div class="arch-node">ad-optimizer</div>
+        <div class="arch-node">xhs-seed</div>
+        <div class="arch-node">review-mgr</div>
+        <div class="arch-node">order-query</div>
+        <div class="arch-node">after-sale</div>
+        <div class="arch-node">report-gen</div>
+        <div class="arch-node highlight">skill-gate 门控</div>
+        <div class="arch-node">cron-engine</div>
+        <div class="arch-node">security-guard</div>
+        <div class="arch-node">data-flywheel</div>
+        <div class="arch-node">web-crawler</div>
+      </div>
+    </div>
+    <div class="arch-connector">▼</div>
+    <div class="arch-layer">
+      <div class="arch-layer-header" style="background:var(--accent-cyan);color:var(--bg-primary);">🔌 MCP 对接层 + 🗄️ 数据层</div>
+      <div class="arch-layer-body">
+        <div class="arch-node">taobao-mcp</div>
+        <div class="arch-node">jd-mcp</div>
+        <div class="arch-node">xhs-mcp</div>
+        <div class="arch-node">erp-mcp</div>
+        <div class="arch-node">dall-e-mcp</div>
+        <div class="arch-node highlight">MySQL 8.0</div>
+        <div class="arch-node highlight">Redis 7.x</div>
+        <div class="arch-node highlight">Milvus 2.x</div>
+        <div class="arch-node">Kafka</div>
+        <div class="arch-node">MinIO</div>
+        <div class="arch-node">ES 8.x</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGENTS -->
+<section class="section" id="agents">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-amber-dim);color:var(--accent-amber);">MULTI-AGENT</div>
+    <h2>5 个 AI Agent 协同</h2>
+    <p>每个 Agent 独立定义感知-决策-执行-记忆四模块，不是简单的 Prompt 路由</p>
+  </div>
+  <div class="agent-grid">
+    <div class="agent-card main">
+      <div class="agent-icon">🎯</div>
+      <div class="agent-name">Main Agent</div>
+      <div class="agent-role">总控路由 · 跨域协调 · 通用问答</div>
+      <div class="agent-pipeline">
+        <span class="pipeline-step">意图分类</span>
+        <span class="pipeline-step">路由分发</span>
+        <span class="pipeline-step">通用执行</span>
+        <span class="pipeline-step">全局记忆</span>
+      </div>
+      <div class="agent-skills">
+        <span class="skill-tag">通用问答</span>
+        <span class="skill-tag">系统状态</span>
+        <span class="skill-tag">跨域协调</span>
+      </div>
+    </div>
+    <div class="agent-card ecom">
+      <div class="agent-icon">🛒</div>
+      <div class="agent-name">Ecommerce Agent</div>
+      <div class="agent-role">电商运营 · Listing/广告/评论/素材/报表</div>
+      <div class="agent-pipeline">
+        <span class="pipeline-step">商品识别</span>
+        <span class="pipeline-step">RAG+规则</span>
+        <span class="pipeline-step">5大技能</span>
+        <span class="pipeline-step">商品库</span>
+      </div>
+      <div class="agent-skills">
+        <span class="skill-tag">listing-gen</span>
+        <span class="skill-tag">ad-optimizer</span>
+        <span class="skill-tag">review-mgr</span>
+        <span class="skill-tag">material-gen</span>
+        <span class="skill-tag">report-gen</span>
+      </div>
+    </div>
+    <div class="agent-card social">
+      <div class="agent-icon">📱</div>
+      <div class="agent-name">Social Agent</div>
+      <div class="agent-role">社媒营销 · 小红书/抖音/视频号/舆情</div>
+      <div class="agent-pipeline">
+        <span class="pipeline-step">内容识别</span>
+        <span class="pipeline-step">平台规范</span>
+        <span class="pipeline-step">5大技能</span>
+        <span class="pipeline-step">话术库</span>
+      </div>
+      <div class="agent-skills">
+        <span class="skill-tag">xhs-seed</span>
+        <span class="skill-tag">douyin-ops</span>
+        <span class="skill-tag">video-channel</span>
+        <span class="skill-tag">opinion-watch</span>
+        <span class="skill-tag">cross-drain</span>
+      </div>
+    </div>
+    <div class="agent-card cs">
+      <div class="agent-icon">🎧</div>
+      <div class="agent-name">CS Agent</div>
+      <div class="agent-role">客服售后 · 意图识别/情感分析/转人工</div>
+      <div class="agent-pipeline">
+        <span class="pipeline-step">情感识别</span>
+        <span class="pipeline-step">意图分类</span>
+        <span class="pipeline-step">4大技能</span>
+        <span class="pipeline-step">用户画像</span>
+      </div>
+      <div class="agent-skills">
+        <span class="skill-tag">order-query</span>
+        <span class="skill-tag">logistics-track</span>
+        <span class="skill-tag">after-sale</span>
+        <span class="skill-tag">intent-recognition</span>
+      </div>
+    </div>
+    <div class="agent-card office">
+      <div class="agent-icon">📊</div>
+      <div class="agent-name">Office Agent</div>
+      <div class="agent-role">办公自动化 · 周报/Excel/邮件/会议</div>
+      <div class="agent-pipeline">
+        <span class="pipeline-step">模板匹配</span>
+        <span class="pipeline-step">数据填充</span>
+        <span class="pipeline-step">5大技能</span>
+        <span class="pipeline-step">模板库</span>
+      </div>
+      <div class="agent-skills">
+        <span class="skill-tag">report-gen</span>
+        <span class="skill-tag">excel-viz</span>
+        <span class="skill-tag">email-mgr</span>
+        <span class="skill-tag">doc-auto</span>
+        <span class="skill-tag">meeting-minutes</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GATE -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-amber-dim);color:var(--accent-amber);">SAFETY</div>
+    <h2>三级 Skill 门控机制</h2>
+    <p>不是所有 AI 操作都能自动执行 — 基于风险的分级管控</p>
+  </div>
+  <div class="gate-flow">
+    <div class="gate-box low">
+      <div class="label">🟢 低风险</div>
+      <div class="desc">Listing 生成、数据查询<br><strong>自动执行</strong></div>
+    </div>
+    <div class="gate-arrow">→</div>
+    <div class="gate-box medium">
+      <div class="label">🟡 中风险</div>
+      <div class="desc">广告调价≤20%、内容发布<br><strong>执行并通知运营</strong></div>
+    </div>
+    <div class="gate-arrow">→</div>
+    <div class="gate-box high">
+      <div class="label">🔴 高风险</div>
+      <div class="desc">退款审批、广告调价>20%<br><strong>必须人工确认</strong></div>
+    </div>
+  </div>
+</section>
+
+<!-- SKILLS -->
+<section class="section" id="skills">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-green-dim);color:var(--accent-green);">CAPABILITIES</div>
+    <h2>30+ 业务技能</h2>
+    <p>覆盖电商运营、社媒营销、客服售后、办公自动化全链路</p>
+  </div>
+  <div class="skill-sections">
+    <div class="skill-group">
+      <h3><span class="icon">🛒</span> 电商运营</h3>
+      <table class="skill-table">
+        <thead><tr><th>技能</th><th>功能</th><th>AI 增强</th><th>门控</th></tr></thead>
+        <tbody>
+          <tr><td><code>listing-gen</code></td><td>多平台 Listing 生成、SEO 优化</td><td><span class="badge badge-ai">AI 标题/关键词</span></td><td><span class="badge badge-auto">低</span></td></tr>
+          <tr><td><code>ad-optimizer</code></td><td>广告出价建议、ROI 分析</td><td><span class="badge badge-ai">AI 出价策略</span></td><td><span class="badge badge-gate">中</span></td></tr>
+          <tr><td><code>review-mgr</code></td><td>评论监控、情感分析、自动回复</td><td><span class="badge badge-ai">AI 情感+回复</span></td><td><span class="badge badge-auto">低</span></td></tr>
+          <tr><td><code>material-gen</code></td><td>商品主图/详情页素材生成</td><td><span class="badge badge-ai">AI 图片+文案</span></td><td><span class="badge badge-auto">低</span></td></tr>
+          <tr><td><code>report-gen</code></td><td>经营日报/周报/月报</td><td><span class="badge badge-ai">AI 数据洞察</span></td><td><span class="badge badge-auto">低</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="skill-group">
+      <h3><span class="icon">📱</span> 社媒营销</h3>
+      <table class="skill-table">
+        <thead><tr><th>技能</th><th>功能</th><th>AI 增强</th><th>门控</th></tr></thead>
+        <tbody>
+          <tr><td><code>xhs-seed</code></td><td>小红书种草笔记创作与发布</td><td><span class="badge badge-ai">AI 文案+合规</span></td><td><span class="badge badge-gate">中</span></td></tr>
+          <tr><td><code>douyin-ops</code></td><td>抖音短视频脚本与运营</td><td><span class="badge badge-ai">AI 脚本生成</span></td><td><span class="badge badge-gate">中</span></td></tr>
+          <tr><td><code>video-channel</code></td><td>视频号内容分发</td><td><span class="badge badge-ai">AI 排期优化</span></td><td><span class="badge badge-gate">中</span></td></tr>
+          <tr><td><code>opinion-watch</code></td><td>舆情监控与预警</td><td><span class="badge badge-ai">AI 情感分析</span></td><td><span class="badge badge-auto">低</span></td></tr>
+          <tr><td><code>cross-drain</code></td><td>私域导流策略</td><td><span class="badge badge-ai">AI 渠道分析</span></td><td><span class="badge badge-gate">中</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="skill-group">
+      <h3><span class="icon">🎧</span> 客服售后</h3>
+      <table class="skill-table">
+        <thead><tr><th>技能</th><th>功能</th><th>AI 增强</th><th>门控</th></tr></thead>
+        <tbody>
+          <tr><td><code>order-query</code></td><td>多平台订单查询</td><td><span class="badge badge-ai">AI 意图识别</span></td><td><span class="badge badge-auto">低</span></td></tr>
+          <tr><td><code>logistics-track</code></td><td>物流轨迹追踪</td><td><span class="badge badge-ai">AI 异常预警</span></td><td><span class="badge badge-auto">低</span></td></tr>
+          <tr><td><code>after-sale</code></td><td>退货退款处理</td><td><span class="badge badge-ai">AI 风控评估</span></td><td><span class="badge badge-gate">高</span></td></tr>
+          <tr><td><code>intent-recognition</code></td><td>客服意图识别</td><td><span class="badge badge-ai">AI 意图分类</span></td><td><span class="badge badge-auto">低</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- MCP -->
+<section class="section" id="mcp">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-purple-dim);color:var(--accent-purple);">INTEGRATION</div>
+    <h2>MCP Server 对接层</h2>
+    <p>Model Context Protocol 标准化对接外部系统 — 意图识别→能力协商→标准化调用→执行反馈</p>
+  </div>
+  <div class="mcp-grid">
+    <div class="mcp-card">
+      <div class="mcp-name">🛒 E-Commerce MCP</div>
+      <div class="mcp-desc">淘宝/天猫 · 京东 · 拼多多</div>
+      <div class="mcp-tools">
+        <span class="mcp-tool">商品CRUD</span>
+        <span class="mcp-tool">订单管理</span>
+        <span class="mcp-tool">广告计划</span>
+        <span class="mcp-tool">评论管理</span>
+        <span class="mcp-tool">退款处理</span>
+      </div>
+    </div>
+    <div class="mcp-card">
+      <div class="mcp-name">📱 Social MCP</div>
+      <div class="mcp-desc">小红书 · 抖音 · 微信/企微</div>
+      <div class="mcp-tools">
+        <span class="mcp-tool">内容发布</span>
+        <span class="mcp-tool">数据分析</span>
+        <span class="mcp-tool">合规检测</span>
+        <span class="mcp-tool">热点趋势</span>
+        <span class="mcp-tool">企微消息</span>
+      </div>
+    </div>
+    <div class="mcp-card">
+      <div class="mcp-name">🎨 Multimodal MCP</div>
+      <div class="mcp-desc">DALL-E · Whisper · TTS · GPT-4V</div>
+      <div class="mcp-tools">
+        <span class="mcp-tool">图片生成</span>
+        <span class="mcp-tool">语音转写</span>
+        <span class="mcp-tool">文字转语音</span>
+        <span class="mcp-tool">图片分析</span>
+      </div>
+    </div>
+    <div class="mcp-card">
+      <div class="mcp-name">🏢 ERP MCP</div>
+      <div class="mcp-desc">PDM/OMS/SCM/WMS/FMS/TMS + 一键采纳</div>
+      <div class="mcp-tools">
+        <span class="mcp-tool">产品同步</span>
+        <span class="mcp-tool">补货建议</span>
+        <span class="mcp-tool">利润计算</span>
+        <span class="mcp-tool">一键采纳</span>
+        <span class="mcp-tool">成本归集</span>
+      </div>
+    </div>
+    <div class="mcp-card">
+      <div class="mcp-name">🗄️ Infra MCP</div>
+      <div class="mcp-desc">MySQL · Redis · Milvus · Qdrant</div>
+      <div class="mcp-tools">
+        <span class="mcp-tool">数据查询</span>
+        <span class="mcp-tool">缓存管理</span>
+        <span class="mcp-tool">向量检索</span>
+        <span class="mcp-tool">集合管理</span>
+      </div>
+    </div>
+    <div class="mcp-card">
+      <div class="mcp-name">📊 Analytics MCP</div>
+      <div class="mcp-desc">QuickChart · Excel</div>
+      <div class="mcp-tools">
+        <span class="mcp-tool">图表生成</span>
+        <span class="mcp-tool">Excel处理</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FLYWHEEL -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-cyan);color:var(--bg-primary);">SELF-EVOLUTION</div>
+    <h2>数据回流与自进化飞轮</h2>
+    <p>业务数据自动回流到知识库和特征库，驱动 AI 模型持续进化</p>
+  </div>
+  <div class="flywheel">
+    <div class="flywheel-step">
+      <div class="step-icon">📥</div>
+      <div class="step-name">数据采集</div>
+      <div class="step-desc">CDC管道 · 爬虫</div>
+    </div>
+    <div class="flywheel-step">
+      <div class="step-icon">⚙️</div>
+      <div class="step-name">特征提取</div>
+      <div class="step-desc">用户画像 · 商品特征</div>
+    </div>
+    <div class="flywheel-step">
+      <div class="step-icon">🧠</div>
+      <div class="step-name">模型优化</div>
+      <div class="step-desc">RAG增强 · 向量更新</div>
+    </div>
+    <div class="flywheel-step">
+      <div class="step-icon">💡</div>
+      <div class="step-name">建议生成</div>
+      <div class="step-desc">AI补货 · AI出价</div>
+    </div>
+    <div class="flywheel-step">
+      <div class="step-icon">✅</div>
+      <div class="step-name">采纳执行</div>
+      <div class="step-desc">门控审核 · ERP写入</div>
+    </div>
+    <div class="flywheel-step">
+      <div class="step-icon">📈</div>
+      <div class="step-name">效果追踪</div>
+      <div class="step-desc">CTR · 转化率 · ROI</div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA FLOW -->
+<section class="section">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-green-dim);color:var(--accent-green);">DATA FLOW</div>
+    <h2>端到端数据流</h2>
+    <p>从用户消息到业务执行的完整链路</p>
+  </div>
+  <div class="dataflow"><span class="highlight">用户消息</span>
+  <span class="arrow">│</span>
+  ├─→ 飞书 / 企微 / 钉钉 / Telegram
+  <span class="arrow">▼</span>
+  <span class="highlight">Gateway</span> (Token Auth)
+  <span class="arrow">▼</span>
+  <span class="agent">Main Agent</span> ── 意图分类 + 路由
+  <span class="arrow">│</span>
+  ├──→ <span class="agent">Ecommerce Agent</span> ──→ <span class="skill">listing-gen</span> / <span class="skill">ad-optimizer</span> / <span class="skill">review-mgr</span>
+  <span class="arrow">│</span>                              <span class="arrow">▼</span>
+  <span class="arrow">│</span>                         <span class="mcp">Ecom MCP</span> (淘宝/京东/拼多多)
+  <span class="arrow">│</span>                              <span class="arrow">▼</span>
+  <span class="arrow">│</span>                         <span class="mcp">ERP MCP</span> (一键采纳闭环)
+  <span class="arrow">│</span>
+  ├──→ <span class="agent">Social Agent</span> ────→ <span class="skill">xhs-seed</span> / <span class="skill">douyin-ops</span> / <span class="skill">opinion-watch</span>
+  <span class="arrow">│</span>                              <span class="arrow">▼</span>
+  <span class="arrow">│</span>                         <span class="mcp">Social MCP</span> (小红书/抖音/微信)
+  <span class="arrow">│</span>
+  ├──→ <span class="agent">CS Agent</span> ────────→ <span class="skill">order-query</span> / <span class="skill">logistics-track</span> / <span class="skill">after-sale</span>
+  <span class="arrow">│</span>                              <span class="arrow">▼</span>
+  <span class="arrow">│</span>                         情感分析 → 负面自动转人工
+  <span class="arrow">│</span>
+  └──→ <span class="agent">Office Agent</span> ────→ <span class="skill">report-gen</span> / <span class="skill">excel-viz</span> / <span class="skill">email-mgr</span></div>
+</section>
+
+<!-- TECH STACK -->
+<section class="section" id="tech">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-blue-dim);color:var(--accent-blue);">TECH STACK</div>
+    <h2>技术栈</h2>
+    <p>Python 云原生 + Next.js 前端，全栈可落地</p>
+  </div>
+  <div class="tech-grid">
+    <div class="tech-category">
+      <h3>🐍 后端 (Python)</h3>
+      <div class="tech-item"><span class="name">Framework</span><span class="value">FastAPI + Pydantic v2</span></div>
+      <div class="tech-item"><span class="name">ORM</span><span class="value">SQLAlchemy 2.x (async)</span></div>
+      <div class="tech-item"><span class="name">AI Engine</span><span class="value">OpenClaw</span></div>
+      <div class="tech-item"><span class="name">LLM</span><span class="value">DeepSeek / Moonshot / GLM-4</span></div>
+      <div class="tech-item"><span class="name">Local LLM</span><span class="value">Ollama (Qwen2.5/3.5)</span></div>
+      <div class="tech-item"><span class="name">Vector DB</span><span class="value">Milvus 2.x + Qdrant</span></div>
+      <div class="tech-item"><span class="name">RDBMS</span><span class="value">MySQL 8.0 (asyncmy)</span></div>
+      <div class="tech-item"><span class="name">Cache</span><span class="value">Redis 7.x (aioredis)</span></div>
+      <div class="tech-item"><span class="name">MQ</span><span class="value">Kafka + RocketMQ</span></div>
+      <div class="tech-item"><span class="name">Search</span><span class="value">Elasticsearch 8.x</span></div>
+      <div class="tech-item"><span class="name">CDC</span><span class="value">Canal → Kafka</span></div>
+      <div class="tech-item"><span class="name">Stream</span><span class="value">PyFlink / Faust</span></div>
+    </div>
+    <div class="tech-category">
+      <h3>⚛️ 前端</h3>
+      <div class="tech-item"><span class="name">Framework</span><span class="value">Next.js 14+ (App Router)</span></div>
+      <div class="tech-item"><span class="name">UI</span><span class="value">React 18+ + TypeScript</span></div>
+      <div class="tech-item"><span class="name">Components</span><span class="value">Ant Design 5.x</span></div>
+      <div class="tech-item"><span class="name">Package</span><span class="value">pnpm</span></div>
+    </div>
+    <div class="tech-category">
+      <h3>☁️ 基础设施</h3>
+      <div class="tech-item"><span class="name">Container</span><span class="value">Docker + Compose</span></div>
+      <div class="tech-item"><span class="name">Orchestration</span><span class="value">Kubernetes + Helm</span></div>
+      <div class="tech-item"><span class="name">CI/CD</span><span class="value">GitHub Actions</span></div>
+      <div class="tech-item"><span class="name">Logging</span><span class="value">EFK Stack</span></div>
+      <div class="tech-item"><span class="name">Monitoring</span><span class="value">Prometheus + Grafana</span></div>
+      <div class="tech-item"><span class="name">Storage</span><span class="value">MinIO (S3)</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section class="section" id="roadmap">
+  <div class="section-header">
+    <div class="section-tag" style="background:var(--accent-purple-dim);color:var(--accent-purple);">ROADMAP</div>
+    <h2>项目路线图</h2>
+    <p>从基础搭建到生产化的完整演进路径</p>
+  </div>
+  <div class="roadmap">
+    <div class="roadmap-item done">
+      <div class="phase">P0</div>
+      <div class="title">基础架构搭建</div>
+      <div class="desc">OpenClaw + 5 Agent + 通道接入 + LLM 配置</div>
+    </div>
+    <div class="roadmap-item done">
+      <div class="phase">P1</div>
+      <div class="title">核心技能开发</div>
+      <div class="desc">30+ Skills + 13 MCP Server + 6 电商平台对接</div>
+    </div>
+    <div class="roadmap-item done">
+      <div class="phase">P2</div>
+      <div class="title">系统能力建设</div>
+      <div class="desc">三级门控 / Agent编排 / 安全合规 / 系统监控</div>
+    </div>
+    <div class="roadmap-item done">
+      <div class="phase">P3</div>
+      <div class="title">AI 增强能力</div>
+      <div class="desc">RAG知识库 / 情感分析 / 智能推荐 / 多模态理解</div>
+    </div>
+    <div class="roadmap-item done">
+      <div class="phase">P4</div>
+      <div class="title">数据闭环</div>
+      <div class="desc">CDC管道 / 自进化飞轮 / 爬虫 / ERP集成</div>
+    </div>
+    <div class="roadmap-item current">
+      <div class="phase">P5</div>
+      <div class="title">前端控制台</div>
+      <div class="desc">Next.js 管理界面 / 数据看板 / 技能配置</div>
+    </div>
+    <div class="roadmap-item">
+      <div class="phase">P6</div>
+      <div class="title">生产化</div>
+      <div class="desc">压测 / 灰度发布 / 多租户 / SLA 保障</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p>AIMS — AI 全员营销系统 · 让 AI 成为每个电商人的超级同事</p>
+  <p style="margin-top:8px;">MIT License · <a href="https://github.com/your-username/aims">GitHub</a></p>
+</footer>
+
+</body>
+</html>

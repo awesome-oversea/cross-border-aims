@@ -1,4 +1,4 @@
-$env:AIMS_GATEWAY_TOKEN = "aims-secret-token-2026"
+$env:AIMS_GATEWAY_TOKEN = if ($env:AIMS_GATEWAY_TOKEN) { $env:AIMS_GATEWAY_TOKEN } else { "change-me-in-production" }
 $gatewayUrl = "http://localhost:18789"
 $healthUrl = "$gatewayUrl/health"
 

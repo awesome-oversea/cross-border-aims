@@ -6,6 +6,9 @@
 !.env.test.example
 !.env.wsl.example
 
+# === Secrets Backup (NEVER commit) ===
+_secrets_backup/
+
 # === Python ===
 .venv/
 __pycache__/
@@ -20,6 +23,9 @@ build/
 .python-version
 pip-log.txt
 pip-delete-this-directory.txt
+
+# === SQLite Runtime Databases ===
+*.db
 
 # === Node.js ===
 node_modules/
@@ -75,3 +81,19 @@ minio-data/
 dist/
 build/
 *.tsbuildinfo
+
+# === Test Output ===
+test_output/
+*.log
+
+# === Extracted / Temporary Files ===
+pdf_extract_output.txt
+docx_extract_output.txt
+ref_extract_book.md
+ref_extract_super.md
+convert_docx*.py
+extract_*.py
+
+# === OS ===
+desktop.ini
+.DS_Store
